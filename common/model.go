@@ -24,6 +24,11 @@ var (
 		"o4",
 		"chatgpt",
 	}
+	VideoGenerationModels = []string{
+		"grok-imagine-video",
+		"sora-",
+		"veo-",
+	}
 )
 
 func IsOpenAIResponseOnlyModel(modelName string) bool {
@@ -51,6 +56,16 @@ func IsImageGenerationModel(modelName string) bool {
 func IsOpenAITextModel(modelName string) bool {
 	modelName = strings.ToLower(modelName)
 	for _, m := range OpenAITextModels {
+		if strings.Contains(modelName, m) {
+			return true
+		}
+	}
+	return false
+}
+
+func IsVideoGenerationModel(modelName string) bool {
+	modelName = strings.ToLower(modelName)
+	for _, m := range VideoGenerationModels {
 		if strings.Contains(modelName, m) {
 			return true
 		}

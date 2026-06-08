@@ -27,6 +27,7 @@ type TaskSubmitResult struct {
 	TaskData       []byte
 	Platform       constant.TaskPlatform
 	Quota          int
+	SubmitTaskInfo *relaycommon.TaskInfo
 	//PerCallPrice   types.PriceData
 }
 
@@ -239,6 +240,10 @@ func RelayTaskSubmit(c *gin.Context, info *relaycommon.RelayInfo) (*TaskSubmitRe
 	if taskErr != nil {
 		return nil, taskErr
 	}
+	var submitTaskInfo *relaycommon.TaskInfo
+	if provider, ok := adaptor.(channel.TaskSubmitStateProvider); ok {
+		submitTaskInfo = provider.SubmittedTaskInfo(info, upstreamTaskID, taskData)
+	}
 
 	// 11. 提交后计费调整：让适配器根据上游实际返回调整 OtherRatios
 	finalQuota := info.PriceData.Quota
@@ -254,6 +259,7 @@ func RelayTaskSubmit(c *gin.Context, info *relaycommon.RelayInfo) (*TaskSubmitRe
 		TaskData:       taskData,
 		Platform:       platform,
 		Quota:          finalQuota,
+		SubmitTaskInfo: submitTaskInfo,
 	}, nil
 }
 

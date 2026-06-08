@@ -592,6 +592,26 @@ func RelayTask(c *gin.Context) {
 		task.Quota = result.Quota
 		task.Data = result.TaskData
 		task.Action = relayInfo.Action
+		if taskInfo := result.SubmitTaskInfo; taskInfo != nil {
+			if taskInfo.Status != "" {
+				task.Status = model.TaskStatus(taskInfo.Status)
+			}
+			if taskInfo.Progress != "" {
+				task.Progress = taskInfo.Progress
+			}
+			if taskInfo.Reason != "" {
+				task.FailReason = taskInfo.Reason
+			}
+			if taskInfo.Url != "" {
+				task.PrivateData.ResultURL = taskInfo.Url
+			}
+			if task.Status == model.TaskStatusSuccess || task.Status == model.TaskStatusFailure {
+				task.FinishTime = common.GetTimestamp()
+				if task.Progress == "" || task.Progress == "0%" {
+					task.Progress = "100%"
+				}
+			}
+		}
 		if insertErr := task.Insert(); insertErr != nil {
 			common.SysError("insert task error: " + insertErr.Error())
 		}
