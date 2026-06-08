@@ -54,6 +54,12 @@ func normalizeChannelTestEndpoint(channel *model.Channel, modelName, endpointTyp
 	if channel != nil && channel.Type == constant.ChannelTypeCodex {
 		return string(constant.EndpointTypeOpenAIResponse)
 	}
+	if common.IsImageGenerationModel(modelName) {
+		return string(constant.EndpointTypeImageGeneration)
+	}
+	if common.IsVideoGenerationModel(modelName) {
+		return string(constant.EndpointTypeOpenAIVideo)
+	}
 	return normalized
 }
 
@@ -184,6 +190,10 @@ func testChannel(channel *model.Channel, testUserID int, testModel string, endpo
 			localErr:    newAPIError,
 			newAPIError: newAPIError,
 		}
+	}
+
+	if constant.EndpointType(endpointType) == constant.EndpointTypeOpenAIVideo {
+		return testChannelVideo(c, channel, testModel)
 	}
 
 	// Determine relay format based on endpoint type or request path
@@ -515,6 +525,128 @@ func testChannel(channel *model.Channel, testUserID int, testModel string, endpo
 		Other:            other,
 	})
 	common.SysLog(fmt.Sprintf("testing channel #%d, response: \n%s", channel.Id, string(respBody)))
+	return testResult{
+		context:     c,
+		localErr:    nil,
+		newAPIError: nil,
+	}
+}
+
+func testChannelVideo(c *gin.Context, channel *model.Channel, testModel string) testResult {
+	payload, err := common.Marshal(map[string]any{
+		"model":   testModel,
+		"prompt":  "a short clip of a cute cat walking in a garden",
+		"seconds": "6",
+	})
+	if err != nil {
+		return testResult{
+			context:     c,
+			localErr:    err,
+			newAPIError: types.NewError(err, types.ErrorCodeJsonMarshalFailed),
+		}
+	}
+
+	c.Request.URL.Path = "/v1/videos"
+	c.Request.Body = io.NopCloser(bytes.NewBuffer(payload))
+	c.Request.ContentLength = int64(len(payload))
+	c.Request.Header.Set("Content-Type", "application/json")
+	c.Set("relay_mode", relayconstant.RelayModeVideoSubmit)
+	common.SetContextKey(c, constant.ContextKeyOriginalModel, testModel)
+
+	info, err := relaycommon.GenRelayInfo(c, types.RelayFormatTask, nil, nil)
+	if err != nil {
+		return testResult{
+			context:     c,
+			localErr:    err,
+			newAPIError: types.NewError(err, types.ErrorCodeGenRelayInfoFailed),
+		}
+	}
+	info.IsChannelTest = true
+	info.PublicTaskID = model.GenerateTaskID()
+	info.InitChannelMeta(c)
+	info.OriginModelName = testModel
+	if info.UpstreamModelName == "" {
+		info.UpstreamModelName = testModel
+	}
+
+	if err := helper.ModelMappedHelper(c, info, nil); err != nil {
+		return testResult{
+			context:     c,
+			localErr:    err,
+			newAPIError: types.NewError(err, types.ErrorCodeChannelModelMappedError),
+		}
+	}
+
+	adaptor := relay.GetTaskAdaptor(constant.TaskPlatform(strconv.Itoa(channel.Type)))
+	if adaptor == nil {
+		err := fmt.Errorf("video channel test is not supported for channel type %s", constant.GetChannelTypeName(channel.Type))
+		return testResult{
+			context:     c,
+			localErr:    err,
+			newAPIError: types.NewError(err, types.ErrorCodeInvalidApiType),
+		}
+	}
+	adaptor.Init(info)
+
+	if taskErr := adaptor.ValidateRequestAndSetAction(c, info); taskErr != nil {
+		err := taskErr.Error
+		if err == nil {
+			err = errors.New(taskErr.Message)
+		}
+		return testResult{
+			context:     c,
+			localErr:    err,
+			newAPIError: types.NewOpenAIError(err, types.ErrorCodeBadResponse, taskErr.StatusCode),
+		}
+	}
+
+	requestBody, err := adaptor.BuildRequestBody(c, info)
+	if err != nil {
+		return testResult{
+			context:     c,
+			localErr:    err,
+			newAPIError: types.NewError(err, types.ErrorCodeConvertRequestFailed),
+		}
+	}
+
+	resp, err := adaptor.DoRequest(c, info, requestBody)
+	if err != nil {
+		return testResult{
+			context:     c,
+			localErr:    err,
+			newAPIError: types.NewOpenAIError(err, types.ErrorCodeDoRequestFailed, http.StatusInternalServerError),
+		}
+	}
+	if resp != nil && resp.StatusCode != http.StatusOK {
+		err := service.RelayErrorHandler(c.Request.Context(), resp, true)
+		return testResult{
+			context:     c,
+			localErr:    err,
+			newAPIError: types.NewOpenAIError(err, types.ErrorCodeBadResponse, http.StatusInternalServerError),
+		}
+	}
+
+	taskID, taskData, taskErr := adaptor.DoResponse(c, resp, info)
+	if taskErr != nil {
+		err := taskErr.Error
+		if err == nil {
+			err = errors.New(taskErr.Message)
+		}
+		return testResult{
+			context:     c,
+			localErr:    err,
+			newAPIError: types.NewOpenAIError(err, types.ErrorCodeBadResponse, taskErr.StatusCode),
+		}
+	}
+	if strings.TrimSpace(taskID) == "" || len(taskData) == 0 {
+		err := errors.New("video test response is empty")
+		return testResult{
+			context:     c,
+			localErr:    err,
+			newAPIError: types.NewOpenAIError(err, types.ErrorCodeBadResponseBody, http.StatusInternalServerError),
+		}
+	}
+
 	return testResult{
 		context:     c,
 		localErr:    nil,

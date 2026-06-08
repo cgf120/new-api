@@ -13,6 +13,8 @@ var (
 		"dall-e-3",
 		"dall-e-2",
 		"gpt-image-1",
+		"grok-imagine-image",
+		"grok-2-image-1212",
 		"prefix:imagen-",
 		"flux-",
 		"flux.1-",

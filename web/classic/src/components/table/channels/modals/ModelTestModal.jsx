@@ -61,6 +61,7 @@ const ModelTestModal = ({
   const streamToggleDisabled = [
     'embeddings',
     'image-generation',
+    'openai-video',
     'jina-rerank',
     'openai-response-compact',
   ].includes(selectedEndpointType);
@@ -97,6 +98,7 @@ const ModelTestModal = ({
       value: 'image-generation',
       label: t('图像生成') + ' (/v1/images/generations)',
     },
+    { value: 'openai-video', label: 'OpenAI Video (/v1/videos)' },
     { value: 'embeddings', label: 'Embeddings (/v1/embeddings)' },
   ];
 
