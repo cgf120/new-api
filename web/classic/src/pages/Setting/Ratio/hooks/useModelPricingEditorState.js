@@ -225,7 +225,8 @@ const buildModelState = (name, sourceMaps) => {
 
 export const isBasePricingUnset = (model) =>
   model.billingMode !== 'tiered_expr' &&
-  !hasValue(model.fixedPrice) && !hasValue(model.inputPrice);
+  !hasValue(model.fixedPrice) &&
+  !hasValue(model.inputPrice);
 
 export const getModelWarnings = (model, t) => {
   if (!model) {
@@ -291,8 +292,8 @@ export const getModelWarnings = (model, t) => {
 export const buildSummaryText = (model, t) => {
   const requestRuleSuffix =
     model.billingMode === 'tiered_expr' && model.requestRuleExpr
-    ? `，${t('请求规则')}`
-    : '';
+      ? `，${t('请求规则')}`
+      : '';
   if (model.billingMode === 'tiered_expr') {
     const expr = model.billingExpr;
     if (!expr) return `${t('表达式计费')}${requestRuleSuffix}`;
@@ -646,9 +647,14 @@ export function useModelPricingEditorState({
       ImageRatio: parseOptionJSON(options.ImageRatio),
       AudioRatio: parseOptionJSON(options.AudioRatio),
       AudioCompletionRatio: parseOptionJSON(options.AudioCompletionRatio),
-      ModelBillingMode: parseOptionJSON(options['billing_setting.billing_mode']),
-      ModelBillingExpr: parseOptionJSON(options['billing_setting.billing_expr']),
+      ModelBillingMode: parseOptionJSON(
+        options['billing_setting.billing_mode'],
+      ),
+      ModelBillingExpr: parseOptionJSON(
+        options['billing_setting.billing_expr'],
+      ),
     };
+    const candidateNameSet = new Set(candidateModelNames);
 
     const names = new Set([
       ...candidateModelNames,
@@ -669,14 +675,18 @@ export function useModelPricingEditorState({
       .map((name) => buildModelState(name, sourceMaps))
       .sort((a, b) => a.name.localeCompare(b.name));
 
-    setModels(nextModels);
-    setInitialVisibleModelNames(
+    const nextVisibleModels =
       filterMode === 'unset'
-        ? nextModels
-            .filter((model) => isBasePricingUnset(model))
-            .map((model) => model.name)
-        : nextModels.map((model) => model.name),
-    );
+        ? nextModels.filter(
+            (model) =>
+              candidateNameSet.has(model.name) && isBasePricingUnset(model),
+          )
+        : filterMode === 'candidate'
+          ? nextModels.filter((model) => candidateNameSet.has(model.name))
+          : nextModels;
+
+    setModels(nextModels);
+    setInitialVisibleModelNames(nextVisibleModels.map((model) => model.name));
     setOptionalFieldToggles(
       nextModels.reduce((acc, model) => {
         acc[model.name] = buildOptionalFieldToggles(model);
@@ -684,19 +694,18 @@ export function useModelPricingEditorState({
       }, {}),
     );
     setSelectedModelName((previous) => {
-      if (previous && nextModels.some((model) => model.name === previous)) {
+      if (
+        previous &&
+        nextVisibleModels.some((model) => model.name === previous)
+      ) {
         return previous;
       }
-      const nextVisibleModels =
-        filterMode === 'unset'
-          ? nextModels.filter((model) => isBasePricingUnset(model))
-          : nextModels;
       return nextVisibleModels[0]?.name || '';
     });
   }, [candidateModelNames, filterMode, options]);
 
   const visibleModels = useMemo(() => {
-    return filterMode === 'unset'
+    return filterMode === 'unset' || filterMode === 'candidate'
       ? models.filter((model) => initialVisibleModelNames.includes(model.name))
       : models;
   }, [filterMode, initialVisibleModelNames, models]);
@@ -917,6 +926,11 @@ export function useModelPricingEditorState({
     };
 
     setModels((previous) => [nextModel, ...previous]);
+    if (filterMode === 'unset' || filterMode === 'candidate') {
+      setInitialVisibleModelNames((previous) =>
+        previous.includes(trimmedName) ? previous : [trimmedName, ...previous],
+      );
+    }
     setOptionalFieldToggles((prev) => ({
       ...prev,
       [trimmedName]: buildOptionalFieldToggles(nextModel),
@@ -929,6 +943,9 @@ export function useModelPricingEditorState({
   const deleteModel = (name) => {
     const nextModels = models.filter((model) => model.name !== name);
     setModels(nextModels);
+    setInitialVisibleModelNames((previous) =>
+      previous.filter((item) => item !== name),
+    );
     setOptionalFieldToggles((prev) => {
       const next = { ...prev };
       delete next[name];
@@ -1046,8 +1063,10 @@ export function useModelPricingEditorState({
             model.requestRuleExpr,
           );
           if (finalBillingExpr) {
-            tieredOutput['billing_setting.billing_mode'][model.name] = 'tiered_expr';
-            tieredOutput['billing_setting.billing_expr'][model.name] = finalBillingExpr;
+            tieredOutput['billing_setting.billing_mode'][model.name] =
+              'tiered_expr';
+            tieredOutput['billing_setting.billing_expr'][model.name] =
+              finalBillingExpr;
           }
         }
 

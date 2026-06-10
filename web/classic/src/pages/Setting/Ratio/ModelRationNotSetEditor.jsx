@@ -17,48 +17,33 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useEffect, useState } from 'react';
-import { API, showError } from '../../../helpers';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import ModelPricingEditor from './components/ModelPricingEditor';
+import { useModelCatalogNames } from './hooks/useModelCatalogNames';
 
 export default function ModelRatioNotSetEditor(props) {
   const { t } = useTranslation();
-  const [enabledModels, setEnabledModels] = useState([]);
+  const { modelNames, loading } = useModelCatalogNames(t);
 
-  const getAllEnabledModels = async () => {
-    try {
-      const res = await API.get('/api/channel/models_enabled');
-      const { success, message, data } = res.data;
-      if (success) {
-        setEnabledModels(data);
-      } else {
-        showError(message);
-      }
-    } catch (error) {
-      console.error(t('获取启用模型失败:'), error);
-      showError(t('获取启用模型失败'));
-    }
-  };
-
-  useEffect(() => {
-    // 获取所有启用的模型
-    getAllEnabledModels();
-  }, []);
   return (
     <ModelPricingEditor
       options={props.options}
       refresh={props.refresh}
-      candidateModelNames={enabledModels}
+      candidateModelNames={modelNames}
       filterMode='unset'
       allowAddModel={false}
       allowDeleteModel={false}
       showConflictFilter={false}
-      listDescription={t(
-        '此页面仅显示未设置价格或基础倍率的模型，设置后会自动从列表中移出',
-      )}
+      listDescription={
+        loading
+          ? t('正在加载模型管理列表...')
+          : t(
+              '此页面仅显示模型管理中未设置价格或基础倍率的模型，设置后会自动从列表中移出',
+            )
+      }
       emptyTitle={t('没有未设置定价的模型')}
-      emptyDescription={t('当前没有未设置定价的模型')}
+      emptyDescription={t('当前模型管理列表中没有未设置定价的模型')}
     />
   );
 }

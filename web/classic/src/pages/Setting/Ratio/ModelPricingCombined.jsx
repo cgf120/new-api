@@ -18,18 +18,34 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { useState } from 'react';
-import { Radio, RadioGroup } from '@douyinfe/semi-ui';
+import { Radio, RadioGroup, Space, Typography } from '@douyinfe/semi-ui';
 import { useTranslation } from 'react-i18next';
 import ModelPricingEditor from './components/ModelPricingEditor';
 import ModelRatioSettings from './ModelRatioSettings';
+import { useModelCatalogNames } from './hooks/useModelCatalogNames';
+
+const { Text } = Typography;
 
 export default function ModelPricingCombined({ options, refresh }) {
   const { t } = useTranslation();
   const [editMode, setEditMode] = useState('visual');
+  const [pricingScope, setPricingScope] = useState('catalog');
+  const { modelNames: catalogModelNames, loading: catalogLoading } =
+    useModelCatalogNames(t);
+
+  const listDescription =
+    pricingScope === 'catalog'
+      ? catalogLoading
+        ? t('正在加载模型管理列表...')
+        : t(
+            '默认只显示模型管理中的 {{count}} 个模型；未配置价格模型也只在这个范围内筛选。',
+            { count: catalogModelNames.length },
+          )
+      : t('当前显示全部内置定价项和自定义价格项。');
 
   return (
     <div>
-      <div style={{ marginTop: 12, marginBottom: 16 }}>
+      <Space wrap style={{ marginTop: 12, marginBottom: 16 }}>
         <RadioGroup
           type='button'
           size='small'
@@ -39,9 +55,37 @@ export default function ModelPricingCombined({ options, refresh }) {
           <Radio value='visual'>{t('可视化编辑')}</Radio>
           <Radio value='manual'>{t('手动编辑')}</Radio>
         </RadioGroup>
-      </div>
+        {editMode === 'visual' ? (
+          <>
+            <RadioGroup
+              type='button'
+              size='small'
+              value={pricingScope}
+              onChange={(e) => setPricingScope(e.target.value)}
+            >
+              <Radio value='catalog'>{t('模型管理模型')}</Radio>
+              <Radio value='all'>{t('全部定价项')}</Radio>
+            </RadioGroup>
+            <Text type='tertiary' size='small'>
+              {pricingScope === 'catalog'
+                ? t('已隐藏未纳入模型管理的内置定价项')
+                : t('用于查看和维护完整底层价格字典')}
+            </Text>
+          </>
+        ) : null}
+      </Space>
       {editMode === 'visual' ? (
-        <ModelPricingEditor options={options} refresh={refresh} />
+        <ModelPricingEditor
+          options={options}
+          refresh={refresh}
+          candidateModelNames={catalogModelNames}
+          filterMode={pricingScope === 'catalog' ? 'candidate' : 'all'}
+          listDescription={listDescription}
+          emptyTitle={t('暂无模型管理模型')}
+          emptyDescription={t(
+            '请先在模型管理中添加模型，或切换到全部定价项查看底层配置。',
+          )}
+        />
       ) : (
         <ModelRatioSettings options={options} refresh={refresh} />
       )}
