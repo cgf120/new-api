@@ -332,6 +332,9 @@ func aliImageHandler(a *Adaptor, c *gin.Context, resp *http.Response, info *rela
 	} else if len(imageResponses.Data) != 0 {
 		info.PriceData.AddOtherRatio("n", float64(len(imageResponses.Data)))
 	}
+	if err := service.NormalizeImageResponseToBase64(imageResponses, service.ChannelProxyFromRelayInfo(info)); err != nil {
+		return types.NewOpenAIError(err, types.ErrorCodeBadResponseBody, http.StatusBadGateway), nil
+	}
 	jsonResponse, err := common.Marshal(imageResponses)
 	if err != nil {
 		return types.NewError(err, types.ErrorCodeBadResponseBody), nil

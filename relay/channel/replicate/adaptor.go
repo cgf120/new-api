@@ -240,38 +240,20 @@ func (a *Adaptor) DoResponse(c *gin.Context, resp *http.Response, info *relaycom
 		return nil, types.NewError(errors.New("replicate adaptor: empty prediction output"), types.ErrorCodeBadResponseBody)
 	}
 
-	var imageReq *dto.ImageRequest
-	if info != nil {
-		if req, ok := info.Request.(*dto.ImageRequest); ok {
-			imageReq = req
-		}
-	}
-
-	wantsBase64 := imageReq != nil && strings.EqualFold(imageReq.ResponseFormat, "b64_json")
-
 	imageResponse := dto.ImageResponse{
 		Created: common.GetTimestamp(),
 		Data:    make([]dto.ImageData, 0),
 	}
 
-	if wantsBase64 {
-		converted, convErr := downloadImagesToBase64(urls)
-		if convErr != nil {
-			return nil, types.NewError(convErr, types.ErrorCodeBadResponse)
+	for _, url := range urls {
+		if url == "" {
+			continue
 		}
-		for _, content := range converted {
-			if content == "" {
-				continue
-			}
-			imageResponse.Data = append(imageResponse.Data, dto.ImageData{B64Json: content})
-		}
-	} else {
-		for _, url := range urls {
-			if url == "" {
-				continue
-			}
-			imageResponse.Data = append(imageResponse.Data, dto.ImageData{Url: url})
-		}
+		imageResponse.Data = append(imageResponse.Data, dto.ImageData{Url: url})
+	}
+
+	if err := service.NormalizeImageResponseToBase64(&imageResponse, service.ChannelProxyFromRelayInfo(info)); err != nil {
+		return nil, types.NewOpenAIError(err, types.ErrorCodeBadResponseBody, http.StatusBadGateway)
 	}
 
 	if len(imageResponse.Data) == 0 {
@@ -297,21 +279,6 @@ func (a *Adaptor) GetModelList() []string {
 
 func (a *Adaptor) GetChannelName() string {
 	return ChannelName
-}
-
-func downloadImagesToBase64(urls []string) ([]string, error) {
-	results := make([]string, 0, len(urls))
-	for _, url := range urls {
-		if strings.TrimSpace(url) == "" {
-			continue
-		}
-		_, data, err := service.GetImageFromUrl(url)
-		if err != nil {
-			return nil, fmt.Errorf("replicate adaptor: failed to download image from %s: %w", url, err)
-		}
-		results = append(results, data)
-	}
-	return results, nil
 }
 
 func mapOpenAISizeToFlux(size string) (aspect string, width int, height int, ok bool) {

@@ -65,6 +65,29 @@ func DoDownloadRequest(originUrl string, reason ...string) (resp *http.Response,
 		}
 
 		common.SysLog(fmt.Sprintf("downloading from origin: %s, reason: %s", common.MaskSensitiveInfo(originUrl), strings.Join(reason, ", ")))
-		return GetHttpClient().Get(originUrl)
+		client := GetHttpClient()
+		if client == nil {
+			client = http.DefaultClient
+		}
+		return client.Get(originUrl)
 	}
+}
+
+func DoDownloadRequestWithProxy(originUrl string, proxyURL string, reason ...string) (resp *http.Response, err error) {
+	if strings.TrimSpace(proxyURL) == "" {
+		return DoDownloadRequest(originUrl, reason...)
+	}
+
+	fetchSetting := system_setting.GetFetchSetting()
+	if err := common.ValidateURLWithFetchSetting(originUrl, fetchSetting.EnableSSRFProtection, fetchSetting.AllowPrivateIp, fetchSetting.DomainFilterMode, fetchSetting.IpFilterMode, fetchSetting.DomainList, fetchSetting.IpList, fetchSetting.AllowedPorts, fetchSetting.ApplyIPFilterForDomain); err != nil {
+		return nil, fmt.Errorf("request reject: %v", err)
+	}
+
+	client, err := GetHttpClientWithProxy(proxyURL)
+	if err != nil {
+		return nil, fmt.Errorf("new proxy http client failed: %w", err)
+	}
+
+	common.SysLog(fmt.Sprintf("downloading from origin via channel proxy: %s, reason: %s", common.MaskSensitiveInfo(originUrl), strings.Join(reason, ", ")))
+	return client.Get(originUrl)
 }

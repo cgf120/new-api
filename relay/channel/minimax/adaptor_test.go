@@ -1,16 +1,20 @@
 package minimax
 
 import (
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/dto"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	relayconstant "github.com/QuantumNous/new-api/relay/constant"
+	"github.com/QuantumNous/new-api/setting/system_setting"
 
 	"github.com/gin-gonic/gin"
 )
@@ -85,11 +89,28 @@ func TestConvertImageRequest(t *testing.T) {
 }
 
 func TestDoResponseForImageGeneration(t *testing.T) {
-	t.Parallel()
-
 	gin.SetMode(gin.TestMode)
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
+
+	fetchSetting := system_setting.GetFetchSetting()
+	originalFetchSetting := *fetchSetting
+	fetchSetting.EnableSSRFProtection = false
+	defer func() {
+		*fetchSetting = originalFetchSetting
+	}()
+	originalMaxFileDownloadMB := constant.MaxFileDownloadMB
+	constant.MaxFileDownloadMB = 1
+	defer func() {
+		constant.MaxFileDownloadMB = originalMaxFileDownloadMB
+	}()
+
+	imageBytes := []byte("minimax-image")
+	imageServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/png")
+		_, _ = w.Write(imageBytes)
+	}))
+	defer imageServer.Close()
 
 	info := &relaycommon.RelayInfo{
 		RelayMode: relayconstant.RelayModeImagesGenerations,
@@ -100,7 +121,7 @@ func TestDoResponseForImageGeneration(t *testing.T) {
 		Header:     make(http.Header),
 		Body:       httptest.NewRecorder().Result().Body,
 	}
-	resp.Body = ioNopCloser(`{"data":{"image_urls":["https://example.com/minimax.png"]}}`)
+	resp.Body = ioNopCloser(fmt.Sprintf(`{"data":{"image_urls":[%q]}}`, imageServer.URL+"/minimax.png"))
 
 	adaptor := &Adaptor{}
 	usage, err := adaptor.DoResponse(c, resp, info)
@@ -112,8 +133,12 @@ func TestDoResponseForImageGeneration(t *testing.T) {
 	}
 
 	body := recorder.Body.String()
-	if !strings.Contains(body, `"url":"https://example.com/minimax.png"`) {
-		t.Fatalf("response body = %s, want OpenAI image response with image URL", body)
+	wantB64 := base64.StdEncoding.EncodeToString(imageBytes)
+	if !strings.Contains(body, `"b64_json":"`+wantB64+`"`) {
+		t.Fatalf("response body = %s, want OpenAI image response with base64", body)
+	}
+	if strings.Contains(body, imageServer.URL) {
+		t.Fatalf("response body = %s, should not expose raw image URL", body)
 	}
 	if strings.Contains(body, `"image_urls"`) {
 		t.Fatalf("response body = %s, should not expose raw MiniMax image_urls payload", body)

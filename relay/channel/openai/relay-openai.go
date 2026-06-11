@@ -12,6 +12,7 @@ import (
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/relay/channel/openrouter"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
+	relayconstant "github.com/QuantumNous/new-api/relay/constant"
 	"github.com/QuantumNous/new-api/relay/helper"
 	"github.com/QuantumNous/new-api/service"
 
@@ -564,6 +565,14 @@ func OpenaiHandlerWithUsage(c *gin.Context, info *relaycommon.RelayInfo, resp *h
 	err = common.Unmarshal(responseBody, &usageResp)
 	if err != nil {
 		return nil, types.NewOpenAIError(err, types.ErrorCodeBadResponseBody, http.StatusInternalServerError)
+	}
+
+	if info.RelayMode == relayconstant.RelayModeImagesGenerations || info.RelayMode == relayconstant.RelayModeImagesEdits {
+		convertedBody, convertErr := service.ConvertImageResponseBodyURLsToBase64(responseBody, service.ChannelProxyFromRelayInfo(info))
+		if convertErr != nil {
+			return nil, types.NewOpenAIError(convertErr, types.ErrorCodeBadResponseBody, http.StatusBadGateway)
+		}
+		responseBody = convertedBody
 	}
 
 	// 写入新的 response body
