@@ -682,16 +682,22 @@ type TaskRelayInfo struct {
 }
 
 type TaskSubmitReq struct {
-	Prompt         string                 `json:"prompt"`
-	Model          string                 `json:"model,omitempty"`
-	Mode           string                 `json:"mode,omitempty"`
-	Image          string                 `json:"image,omitempty"`
-	Images         []string               `json:"images,omitempty"`
-	Size           string                 `json:"size,omitempty"`
-	Duration       int                    `json:"duration,omitempty"`
-	Seconds        string                 `json:"seconds,omitempty"`
-	InputReference string                 `json:"input_reference,omitempty"`
-	Metadata       map[string]interface{} `json:"metadata,omitempty"`
+	Prompt          string                 `json:"prompt"`
+	Model           string                 `json:"model,omitempty"`
+	Mode            string                 `json:"mode,omitempty"`
+	Image           string                 `json:"image,omitempty"`
+	Images          []string               `json:"images,omitempty"`
+	ImageURLs       []string               `json:"image_urls,omitempty"`
+	ImageReference  any                    `json:"image_reference,omitempty"`
+	ImageReferences any                    `json:"imageReferences,omitempty"`
+	Size            string                 `json:"size,omitempty"`
+	Duration        int                    `json:"duration,omitempty"`
+	Seconds         string                 `json:"seconds,omitempty"`
+	InputReference  string                 `json:"input_reference,omitempty"`
+	AspectRatio     string                 `json:"aspect_ratio,omitempty"`
+	Resolution      string                 `json:"resolution,omitempty"`
+	Preset          string                 `json:"preset,omitempty"`
+	Metadata        map[string]interface{} `json:"metadata,omitempty"`
 }
 
 func (t *TaskSubmitReq) GetPrompt() string {
@@ -699,7 +705,7 @@ func (t *TaskSubmitReq) GetPrompt() string {
 }
 
 func (t *TaskSubmitReq) HasImage() bool {
-	return len(t.Images) > 0
+	return len(t.Images) > 0 || len(t.ImageURLs) > 0 || strings.TrimSpace(t.Image) != "" || strings.TrimSpace(t.InputReference) != ""
 }
 
 func (t *TaskSubmitReq) UnmarshalJSON(data []byte) error {
@@ -707,6 +713,7 @@ func (t *TaskSubmitReq) UnmarshalJSON(data []byte) error {
 	aux := &struct {
 		Metadata json.RawMessage `json:"metadata,omitempty"`
 		Duration json.RawMessage `json:"duration,omitempty"`
+		Seconds  json.RawMessage `json:"seconds,omitempty"`
 		*Alias
 	}{
 		Alias: (*Alias)(t),
@@ -717,16 +724,13 @@ func (t *TaskSubmitReq) UnmarshalJSON(data []byte) error {
 	}
 
 	if len(aux.Duration) > 0 {
-		var durationInt int
-		if err := common.Unmarshal(aux.Duration, &durationInt); err == nil {
-			t.Duration = durationInt
-		} else {
-			var durationStr string
-			if err := common.Unmarshal(aux.Duration, &durationStr); err == nil && durationStr != "" {
-				if v, err := strconv.Atoi(durationStr); err == nil {
-					t.Duration = v
-				}
-			}
+		if duration, ok := taskRawIntString(aux.Duration); ok {
+			t.Duration = duration
+		}
+	}
+	if len(aux.Seconds) > 0 {
+		if seconds, ok := taskRawString(aux.Seconds); ok {
+			t.Seconds = seconds
 		}
 	}
 
@@ -748,6 +752,31 @@ func (t *TaskSubmitReq) UnmarshalJSON(data []byte) error {
 
 	return nil
 }
+
+func taskRawIntString(raw json.RawMessage) (int, bool) {
+	if value, ok := taskRawString(raw); ok {
+		i, err := strconv.Atoi(value)
+		return i, err == nil
+	}
+	return 0, false
+}
+
+func taskRawString(raw json.RawMessage) (string, bool) {
+	var intValue int
+	if err := common.Unmarshal(raw, &intValue); err == nil {
+		return strconv.Itoa(intValue), true
+	}
+	var floatValue float64
+	if err := common.Unmarshal(raw, &floatValue); err == nil && floatValue == float64(int(floatValue)) {
+		return strconv.Itoa(int(floatValue)), true
+	}
+	var stringValue string
+	if err := common.Unmarshal(raw, &stringValue); err == nil && strings.TrimSpace(stringValue) != "" {
+		return strings.TrimSpace(stringValue), true
+	}
+	return "", false
+}
+
 func (t *TaskSubmitReq) UnmarshalMetadata(v any) error {
 	metadata := t.Metadata
 	if metadata != nil {

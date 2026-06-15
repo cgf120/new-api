@@ -111,11 +111,29 @@ func (a *TaskAdaptor) BuildRequestBody(c *gin.Context, info *relaycommon.RelayIn
 	if req.Size != "" {
 		body["size"] = req.Size
 	}
+	if req.AspectRatio != "" {
+		body["aspect_ratio"] = req.AspectRatio
+	}
+	if req.Resolution != "" {
+		body["resolution"] = req.Resolution
+	}
+	if req.Preset != "" {
+		body["preset"] = req.Preset
+	}
 	if req.Image != "" {
 		body["image"] = req.Image
 	}
 	if req.InputReference != "" {
 		body["input_reference"] = req.InputReference
+	}
+	if len(req.ImageURLs) > 0 {
+		body["image_urls"] = req.ImageURLs
+	}
+	if req.ImageReference != nil {
+		body["image_reference"] = req.ImageReference
+	}
+	if req.ImageReferences != nil {
+		body["imageReferences"] = req.ImageReferences
 	}
 	if len(req.Images) > 0 {
 		body["images"] = req.Images
