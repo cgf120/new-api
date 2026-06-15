@@ -38,6 +38,12 @@ func (a *Adaptor) ConvertAudioRequest(c *gin.Context, info *relaycommon.RelayInf
 }
 
 func (a *Adaptor) ConvertImageRequest(c *gin.Context, info *relaycommon.RelayInfo, request dto.ImageRequest) (any, error) {
+	if info != nil && info.RelayMode == constant.RelayModeImagesEdits {
+		var openAIAdaptor openai.Adaptor
+		openAIAdaptor.Init(info)
+		return openAIAdaptor.ConvertImageRequest(c, info, request)
+	}
+
 	xaiRequest := ImageRequest{
 		Model:          request.Model,
 		Prompt:         request.Prompt,
@@ -108,6 +114,11 @@ func (a *Adaptor) ConvertOpenAIResponsesRequest(c *gin.Context, info *relaycommo
 }
 
 func (a *Adaptor) DoRequest(c *gin.Context, info *relaycommon.RelayInfo, requestBody io.Reader) (any, error) {
+	if info != nil &&
+		info.RelayMode == constant.RelayModeImagesEdits &&
+		!strings.HasPrefix(c.Request.Header.Get("Content-Type"), "application/json") {
+		return channel.DoFormRequest(a, c, info, requestBody)
+	}
 	return channel.DoApiRequest(a, c, info, requestBody)
 }
 
