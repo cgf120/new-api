@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { useState } from 'react';
-import { Banner, Button, Modal } from '@douyinfe/semi-ui';
+import { Banner, Button, Modal, Radio, RadioGroup } from '@douyinfe/semi-ui';
 import { IconAlertTriangle, IconClose } from '@douyinfe/semi-icons';
 import CardPro from '../../common/ui/CardPro';
 import ModelsTable from './ModelsTable';
@@ -162,6 +162,17 @@ const ModelsPage = () => {
         tabsArea={<ModelsTabs {...modelsData} />}
         actionsArea={
           <div className='flex flex-col md:flex-row justify-between items-center gap-2 w-full'>
+            <RadioGroup
+              type='button'
+              size='small'
+              value={modelsData.modelListScope}
+              onChange={(e) =>
+                modelsData.handleModelListScopeChange(e.target.value)
+              }
+            >
+              <Radio value='channel'>{t('渠道模型')}</Radio>
+              <Radio value='all'>{t('全部模型')}</Radio>
+            </RadioGroup>
             <ModelsActions
               selectedKeys={selectedKeys}
               setSelectedKeys={setSelectedKeys}

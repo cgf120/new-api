@@ -44,6 +44,14 @@ type Model struct {
 	MatchedCount  int      `json:"matched_count,omitempty" gorm:"-"`
 }
 
+type ModelListOptions struct {
+	Keyword           string
+	Vendor            string
+	Status            string
+	SyncOfficial      string
+	ChannelModelsOnly bool
+}
+
 func (mi *Model) Insert() error {
 	now := common.GetTimestamp()
 	mi.CreatedTime = now
@@ -104,10 +112,160 @@ func GetVendorModelCounts() (map[int64]int64, error) {
 	return m, nil
 }
 
+func GetVendorModelCountsForOptions(options ModelListOptions) (map[int64]int64, error) {
+	options.Vendor = ""
+	if !options.ChannelModelsOnly && strings.TrimSpace(options.Keyword) == "" && strings.TrimSpace(options.Status) == "" && strings.TrimSpace(options.SyncOfficial) == "" {
+		return GetVendorModelCounts()
+	}
+
+	var models []*Model
+	db := applyModelListFilters(DB.Model(&Model{}), options)
+	if err := db.Find(&models).Error; err != nil {
+		return nil, err
+	}
+	if options.ChannelModelsOnly {
+		models = filterModelsByEnabledChannelModels(models)
+	}
+
+	counts := make(map[int64]int64)
+	for _, item := range models {
+		if item == nil {
+			continue
+		}
+		counts[int64(item.VendorID)]++
+	}
+	return counts, nil
+}
+
 func GetAllModels(offset int, limit int) ([]*Model, error) {
 	var models []*Model
 	err := DB.Order("id DESC").Offset(offset).Limit(limit).Find(&models).Error
 	return models, err
+}
+
+func ListModels(options ModelListOptions, offset int, limit int) ([]*Model, int64, error) {
+	db := applyModelListFilters(DB.Model(&Model{}), options)
+
+	if options.ChannelModelsOnly {
+		var allModels []*Model
+		if err := db.Order("models.id DESC").Find(&allModels).Error; err != nil {
+			return nil, 0, err
+		}
+		filtered := filterModelsByEnabledChannelModels(allModels)
+		return paginateModels(filtered, offset, limit), int64(len(filtered)), nil
+	}
+
+	var total int64
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var models []*Model
+	if err := db.Order("models.id DESC").Offset(offset).Limit(limit).Find(&models).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return models, total, nil
+}
+
+func applyModelListFilters(db *gorm.DB, options ModelListOptions) *gorm.DB {
+	if keyword := strings.TrimSpace(options.Keyword); keyword != "" {
+		like := "%" + keyword + "%"
+		db = db.Where("models.model_name LIKE ? OR models.description LIKE ? OR models.tags LIKE ?", like, like, like)
+	}
+	if vendor := strings.TrimSpace(options.Vendor); vendor != "" && vendor != "all" {
+		if vid, err := strconv.Atoi(vendor); err == nil {
+			db = db.Where("models.vendor_id = ?", vid)
+		} else {
+			db = db.Joins("JOIN vendors ON vendors.id = models.vendor_id").Where("vendors.name LIKE ?", "%"+vendor+"%")
+		}
+	}
+	if status, ok := parseModelIntFilter(options.Status); ok {
+		db = db.Where("models.status = ?", status)
+	}
+	if syncOfficial, ok := parseModelIntFilter(options.SyncOfficial); ok {
+		db = db.Where("models.sync_official = ?", syncOfficial)
+	}
+	return db
+}
+
+func parseModelIntFilter(value string) (int, bool) {
+	value = strings.TrimSpace(value)
+	if value == "" || value == "all" {
+		return 0, false
+	}
+	parsed, err := strconv.Atoi(value)
+	return parsed, err == nil
+}
+
+func filterModelsByEnabledChannelModels(models []*Model) []*Model {
+	channelModels := normalizeLookupValues(GetEnabledChannelModels())
+	if len(channelModels) == 0 {
+		return []*Model{}
+	}
+
+	channelModelSet := make(map[string]struct{}, len(channelModels))
+	for _, name := range channelModels {
+		channelModelSet[name] = struct{}{}
+	}
+
+	filtered := make([]*Model, 0, len(models))
+	for _, item := range models {
+		if modelMetaMatchesChannelModels(item, channelModels, channelModelSet) {
+			filtered = append(filtered, item)
+		}
+	}
+	return filtered
+}
+
+func modelMetaMatchesChannelModels(item *Model, channelModels []string, channelModelSet map[string]struct{}) bool {
+	if item == nil {
+		return false
+	}
+	name := strings.TrimSpace(item.ModelName)
+	if name == "" {
+		return false
+	}
+
+	switch item.NameRule {
+	case NameRulePrefix:
+		for _, channelModel := range channelModels {
+			if strings.HasPrefix(channelModel, name) {
+				return true
+			}
+		}
+	case NameRuleContains:
+		for _, channelModel := range channelModels {
+			if strings.Contains(channelModel, name) {
+				return true
+			}
+		}
+	case NameRuleSuffix:
+		for _, channelModel := range channelModels {
+			if strings.HasSuffix(channelModel, name) {
+				return true
+			}
+		}
+	default:
+		_, ok := channelModelSet[name]
+		return ok
+	}
+
+	return false
+}
+
+func paginateModels(models []*Model, offset int, limit int) []*Model {
+	if limit <= 0 || offset >= len(models) {
+		return []*Model{}
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	end := offset + limit
+	if end > len(models) {
+		end = len(models)
+	}
+	return models[offset:end]
 }
 
 func GetBoundChannelsByModelsMap(modelNames []string) (map[string][]BoundChannel, error) {
@@ -193,25 +351,5 @@ func GetPreferredModelOwnerChannelTypes(modelNames []string, groups []string) (m
 }
 
 func SearchModels(keyword string, vendor string, offset int, limit int) ([]*Model, int64, error) {
-	var models []*Model
-	db := DB.Model(&Model{})
-	if keyword != "" {
-		like := "%" + keyword + "%"
-		db = db.Where("model_name LIKE ? OR description LIKE ? OR tags LIKE ?", like, like, like)
-	}
-	if vendor != "" {
-		if vid, err := strconv.Atoi(vendor); err == nil {
-			db = db.Where("models.vendor_id = ?", vid)
-		} else {
-			db = db.Joins("JOIN vendors ON vendors.id = models.vendor_id").Where("vendors.name LIKE ?", "%"+vendor+"%")
-		}
-	}
-	var total int64
-	if err := db.Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-	if err := db.Order("models.id DESC").Offset(offset).Limit(limit).Find(&models).Error; err != nil {
-		return nil, 0, err
-	}
-	return models, total, nil
+	return ListModels(ModelListOptions{Keyword: keyword, Vendor: vendor}, offset, limit)
 }

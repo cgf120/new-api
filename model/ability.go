@@ -54,6 +54,16 @@ func GetEnabledModels() []string {
 	return models
 }
 
+func GetEnabledChannelModels() []string {
+	var models []string
+	DB.Table("abilities").
+		Joins("JOIN channels ON channels.id = abilities.channel_id").
+		Where("abilities.enabled = ? AND channels.status = ?", true, common.ChannelStatusEnabled).
+		Distinct("abilities.model").
+		Pluck("abilities.model", &models)
+	return models
+}
+
 func GetAllEnableAbilities() []Ability {
 	var abilities []Ability
 	DB.Find(&abilities, "enabled = ?", true)

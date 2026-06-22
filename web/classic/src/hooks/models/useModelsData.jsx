@@ -34,6 +34,7 @@ export const useModelsData = () => {
   const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
   const [searching, setSearching] = useState(false);
   const [modelCount, setModelCount] = useState(0);
+  const [modelListScope, setModelListScope] = useState('channel');
 
   // Modal states
   const [showEdit, setShowEdit] = useState(false);
@@ -97,6 +98,7 @@ export const useModelsData = () => {
   const [editingVendor, setEditingVendor] = useState({ id: undefined });
   const [syncing, setSyncing] = useState(false);
   const [previewing, setPreviewing] = useState(false);
+  const channelModelsOnly = modelListScope === 'channel';
 
   const vendorMap = useMemo(() => {
     const map = {};
@@ -127,10 +129,13 @@ export const useModelsData = () => {
   ) => {
     setLoading(true);
     try {
-      let url = `/api/models/?p=${page}&page_size=${size}`;
+      const channelModelsOnlyQuery = channelModelsOnly
+        ? '&channel_models_only=true'
+        : '';
+      let url = `/api/models/?p=${page}&page_size=${size}${channelModelsOnlyQuery}`;
       if (vendorKey && vendorKey !== 'all') {
         // Filter by vendor ID
-        url = `/api/models/search?vendor=${vendorKey}&p=${page}&page_size=${size}`;
+        url = `/api/models/search?vendor=${vendorKey}&p=${page}&page_size=${size}${channelModelsOnlyQuery}`;
       }
 
       const res = await API.get(url);
@@ -262,8 +267,11 @@ export const useModelsData = () => {
 
     setSearching(true);
     try {
+      const channelModelsOnlyQuery = channelModelsOnly
+        ? '&channel_models_only=true'
+        : '';
       const res = await API.get(
-        `/api/models/search?keyword=${searchKeyword}&vendor=${searchVendor}&p=1&page_size=${pageSize}`,
+        `/api/models/search?keyword=${searchKeyword}&vendor=${searchVendor}&p=1&page_size=${pageSize}${channelModelsOnlyQuery}`,
       );
       const { success, message, data } = res.data;
       if (success) {
@@ -333,10 +341,15 @@ export const useModelsData = () => {
     loadModels(page, pageSize, activeVendorKey);
   };
 
+  const handleModelListScopeChange = (scope) => {
+    setActivePage(1);
+    setModelListScope(scope);
+  };
+
   // Reload models when activeVendorKey changes
   useEffect(() => {
     loadModels(1, pageSize, activeVendorKey);
-  }, [activeVendorKey]);
+  }, [activeVendorKey, modelListScope]);
 
   // Handle page size change
   const handlePageSizeChange = async (size) => {
@@ -435,6 +448,8 @@ export const useModelsData = () => {
     activePage,
     pageSize,
     modelCount,
+    modelListScope,
+    handleModelListScopeChange,
 
     // Selection state
     selectedKeys,

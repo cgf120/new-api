@@ -17,18 +17,17 @@ import (
 func GetAllModelsMeta(c *gin.Context) {
 
 	pageInfo := common.GetPageQuery(c)
-	modelsMeta, err := model.GetAllModels(pageInfo.GetStartIdx(), pageInfo.GetPageSize())
+	options := getModelListOptions(c)
+	modelsMeta, total, err := model.ListModels(options, pageInfo.GetStartIdx(), pageInfo.GetPageSize())
 	if err != nil {
 		common.ApiError(c, err)
 		return
 	}
 	// 批量填充附加字段，提升列表接口性能
 	enrichModels(modelsMeta)
-	var total int64
-	model.DB.Model(&model.Model{}).Count(&total)
 
 	// 统计供应商计数（全部数据，不受分页影响）
-	vendorCounts, _ := model.GetVendorModelCounts()
+	vendorCounts, _ := model.GetVendorModelCountsForOptions(options)
 
 	pageInfo.SetTotal(int(total))
 	pageInfo.SetItems(modelsMeta)
@@ -44,20 +43,37 @@ func GetAllModelsMeta(c *gin.Context) {
 // SearchModelsMeta 搜索模型列表
 func SearchModelsMeta(c *gin.Context) {
 
-	keyword := c.Query("keyword")
-	vendor := c.Query("vendor")
+	options := getModelListOptions(c)
 	pageInfo := common.GetPageQuery(c)
 
-	modelsMeta, total, err := model.SearchModels(keyword, vendor, pageInfo.GetStartIdx(), pageInfo.GetPageSize())
+	modelsMeta, total, err := model.ListModels(options, pageInfo.GetStartIdx(), pageInfo.GetPageSize())
 	if err != nil {
 		common.ApiError(c, err)
 		return
 	}
 	// 批量填充附加字段，提升列表接口性能
 	enrichModels(modelsMeta)
+	vendorCounts, _ := model.GetVendorModelCountsForOptions(options)
 	pageInfo.SetTotal(int(total))
 	pageInfo.SetItems(modelsMeta)
-	common.ApiSuccess(c, pageInfo)
+	common.ApiSuccess(c, gin.H{
+		"items":         modelsMeta,
+		"total":         total,
+		"page":          pageInfo.GetPage(),
+		"page_size":     pageInfo.GetPageSize(),
+		"vendor_counts": vendorCounts,
+	})
+}
+
+func getModelListOptions(c *gin.Context) model.ModelListOptions {
+	channelModelsOnly, _ := strconv.ParseBool(c.DefaultQuery("channel_models_only", "false"))
+	return model.ModelListOptions{
+		Keyword:           c.Query("keyword"),
+		Vendor:            c.Query("vendor"),
+		Status:            c.Query("status"),
+		SyncOfficial:      c.Query("sync_official"),
+		ChannelModelsOnly: channelModelsOnly,
+	}
 }
 
 // GetModelMeta 根据 ID 获取单条模型信息

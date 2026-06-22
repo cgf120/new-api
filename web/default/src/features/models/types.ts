@@ -91,6 +91,7 @@ export interface GetModelsParams {
   vendor?: string // vendor ID to filter by
   status?: string // filter by status
   sync_official?: string // filter by sync_official status
+  channel_models_only?: boolean // only show models exposed by enabled channels
 }
 
 /**
@@ -101,6 +102,7 @@ export interface SearchModelsParams {
   vendor?: string // vendor ID to filter by
   status?: string // filter by status
   sync_official?: string // filter by sync_official status
+  channel_models_only?: boolean // only show models exposed by enabled channels
   p?: number
   page_size?: number
 }

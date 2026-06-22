@@ -16,13 +16,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
 import { useMediaQuery } from '@/hooks'
 import { useTranslation } from 'react-i18next'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { DataTablePage, useDataTable } from '@/components/data-table'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { getModels, searchModels, getVendors } from '../api'
 import {
   DEFAULT_PAGE_SIZE,
@@ -36,10 +37,15 @@ import { useModels } from './models-provider'
 
 const route = getRouteApi('/_authenticated/models/$section')
 
+type ModelListScope = 'channel' | 'all'
+
 export function ModelsTable() {
   const { t } = useTranslation()
   const { selectedVendor } = useModels()
   const isMobile = useMediaQuery('(max-width: 640px)')
+  const [modelListScope, setModelListScope] =
+    useState<ModelListScope>('channel')
+  const channelModelsOnly = modelListScope === 'channel'
 
   // URL state management
   const {
@@ -95,6 +101,22 @@ export function ModelsTable() {
   // Determine whether to use search or regular list API
   const shouldSearch = Boolean(globalFilter?.trim())
 
+  const handleModelListScopeChange = useCallback(
+    (value: string[]) => {
+      const nextScope = value.find((item) => item !== modelListScope) as
+        | ModelListScope
+        | undefined
+      if (nextScope === 'channel' || nextScope === 'all') {
+        setModelListScope(nextScope)
+        onPaginationChange?.({
+          pageIndex: 0,
+          pageSize: pagination.pageSize,
+        })
+      }
+    },
+    [modelListScope, onPaginationChange, pagination.pageSize]
+  )
+
   // Apply selected vendor from context or filter
   const activeVendorFilter =
     selectedVendor ||
@@ -116,6 +138,7 @@ export function ModelsTable() {
         syncFilter.length > 0 && !syncFilter.includes('all')
           ? syncFilter[0]
           : undefined,
+      channel_models_only: channelModelsOnly,
       p: pagination.pageIndex + 1,
       page_size: pagination.pageSize,
     }),
@@ -132,6 +155,7 @@ export function ModelsTable() {
             syncFilter.length > 0 && !syncFilter.includes('all')
               ? syncFilter[0]
               : undefined,
+          channel_models_only: channelModelsOnly,
           p: pagination.pageIndex + 1,
           page_size: pagination.pageSize,
         })
@@ -145,6 +169,7 @@ export function ModelsTable() {
             syncFilter.length > 0 && !syncFilter.includes('all')
               ? syncFilter[0]
               : undefined,
+          channel_models_only: channelModelsOnly,
           p: pagination.pageIndex + 1,
           page_size: pagination.pageSize,
         })
@@ -202,13 +227,32 @@ export function ModelsTable() {
       isLoading={isLoading}
       isFetching={isFetching}
       emptyTitle={t('No Models Found')}
-      emptyDescription={t(
-        'No models available. Create your first model to get started.'
-      )}
+      emptyDescription={
+        channelModelsOnly
+          ? t(
+              'No channel models found. Add models to enabled channels or switch to all models.'
+            )
+          : t('No models available. Create your first model to get started.')
+      }
       skeletonKeyPrefix='model-skeleton'
       applyHeaderSize
       toolbarProps={{
         searchPlaceholder: t('Filter by model name...'),
+        additionalSearch: (
+          <ToggleGroup
+            value={[modelListScope]}
+            onValueChange={handleModelListScopeChange}
+            aria-label={t('Model list scope')}
+            variant='outline'
+            size='default'
+            spacing={0}
+          >
+            <ToggleGroupItem value='channel'>
+              {t('Channel models')}
+            </ToggleGroupItem>
+            <ToggleGroupItem value='all'>{t('All models')}</ToggleGroupItem>
+          </ToggleGroup>
+        ),
         filters: [
           {
             columnId: 'status',
