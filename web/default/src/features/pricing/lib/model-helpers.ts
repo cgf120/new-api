@@ -16,6 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import type { TFunction } from 'i18next'
 import { EXCLUDED_GROUPS, QUOTA_TYPE_VALUES } from '../constants'
 import type { PricingModel } from '../types'
 
@@ -51,4 +52,50 @@ export function replaceModelInPath(path: string, modelName: string): string {
  */
 export function isTokenBasedModel(model: PricingModel): boolean {
   return model.quota_type === QUOTA_TYPE_VALUES.TOKEN
+}
+
+const SECOND_BASED_FIXED_PRICE_MODEL_PATTERNS = [
+  /^veo(?:[-_.]|\d)/i,
+  /^grok-imagine-video$/i,
+]
+
+/**
+ * NewAPI stores video generation prices in the fixed-price field, but billing
+ * multiplies that unit price by generated seconds in the task relay.
+ */
+export function isSecondBasedFixedPriceModel(model: PricingModel): boolean {
+  if (model.quota_type !== QUOTA_TYPE_VALUES.REQUEST) return false
+
+  const modelName = model.model_name || ''
+  const endpointTypes = Array.isArray(model.supported_endpoint_types)
+    ? model.supported_endpoint_types
+    : []
+
+  return (
+    endpointTypes.some((endpoint) => endpoint.toLowerCase().includes('video')) ||
+    SECOND_BASED_FIXED_PRICE_MODEL_PATTERNS.some((pattern) =>
+      pattern.test(modelName)
+    )
+  )
+}
+
+export function getFixedPriceUnitLabel(
+  model: PricingModel,
+  t: TFunction
+): string {
+  return isSecondBasedFixedPriceModel(model) ? t('second') : t('request')
+}
+
+export function getFixedPricingTypeLabel(
+  model: PricingModel,
+  t: TFunction
+): string {
+  return isSecondBasedFixedPriceModel(model) ? t('Per Second') : t('Per Request')
+}
+
+export function getFixedPricingTypeShortLabel(
+  model: PricingModel,
+  t: TFunction
+): string {
+  return isSecondBasedFixedPriceModel(model) ? t('Second') : t('Request')
 }

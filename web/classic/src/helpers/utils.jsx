@@ -608,6 +608,32 @@ export const selectFilter = (input, option) => {
 
 // -------------------------------
 // 模型定价计算工具函数
+const SECOND_BASED_FIXED_PRICE_MODEL_PATTERNS = [
+  /^veo(?:[-_.]|\d)/i,
+  /^grok-imagine-video$/i,
+];
+
+export const isSecondBasedFixedPriceModel = (record = {}) => {
+  if (record.quota_type !== 1) return false;
+
+  const modelName = record.model_name || '';
+  const endpointTypes = Array.isArray(record.supported_endpoint_types)
+    ? record.supported_endpoint_types
+    : [];
+
+  return (
+    endpointTypes.some((endpoint) =>
+      String(endpoint).toLowerCase().includes('video'),
+    ) ||
+    SECOND_BASED_FIXED_PRICE_MODEL_PATTERNS.some((pattern) =>
+      pattern.test(modelName),
+    )
+  );
+};
+
+export const getFixedPricingTypeText = (record, t) =>
+  isSecondBasedFixedPriceModel(record) ? t('按秒计费') : t('按次计费');
+
 export const calculateModelPrice = ({
   record,
   selectedGroup,
@@ -748,7 +774,7 @@ export const calculateModelPrice = ({
   }
 
   if (record.quota_type === 1) {
-    // 按次计费
+    // 固定价格；视频模型在展示和扣费时按秒解释该单价。
     const priceUSD = parseFloat(record.model_price) * usedGroupRatio;
     const displayVal = displayPrice(priceUSD);
 
@@ -756,6 +782,7 @@ export const calculateModelPrice = ({
       price: displayVal,
       isPerToken: false,
       isTokensDisplay: false,
+      fixedUnit: isSecondBasedFixedPriceModel(record) ? 'second' : 'request',
       usedGroup,
       usedGroupRatio,
     };
@@ -891,7 +918,7 @@ export const getModelPriceItems = (
       key: 'fixed',
       label: t('模型价格'),
       value: priceData.price,
-      suffix: ` / ${t('次')}`,
+      suffix: ` / ${priceData.fixedUnit === 'second' ? t('秒') : t('次')}`,
     },
   ].filter((item) => item.value !== null && item.value !== undefined && item.value !== '');
 };

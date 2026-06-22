@@ -29,7 +29,11 @@ import {
   getDynamicPricingSummary,
 } from '../lib/dynamic-price'
 import { parseTags } from '../lib/filters'
-import { isTokenBasedModel } from '../lib/model-helpers'
+import {
+  getFixedPriceUnitLabel,
+  getFixedPricingTypeLabel,
+  isTokenBasedModel,
+} from '../lib/model-helpers'
 import { formatPrice, formatRequestPrice } from '../lib/price'
 import type { PricingModel, TokenUnit } from '../types'
 import { ModelPerfBadge, type ModelPerfBadgeData } from './model-perf-badge'
@@ -52,6 +56,8 @@ export const ModelCard = memo(function ModelCard(props: ModelCardProps) {
   const usdExchangeRate = props.usdExchangeRate ?? 1
   const showRechargePrice = props.showRechargePrice ?? false
   const isTokenBased = isTokenBasedModel(props.model)
+  const fixedPriceUnitLabel = getFixedPriceUnitLabel(props.model, t)
+  const fixedPricingTypeLabel = getFixedPricingTypeLabel(props.model, t)
   const tokenUnitLabel = tokenUnit === 'K' ? '1K' : '1M'
   const tags = parseTags(props.model.tags)
   const groups = props.model.enable_groups || []
@@ -193,7 +199,7 @@ export const ModelCard = memo(function ModelCard(props: ModelCardProps) {
                       usdExchangeRate
                     )}
                   </span>{' '}
-                  / {t('request')}
+                  / {fixedPriceUnitLabel}
                 </span>
               )}
             </div>
@@ -234,7 +240,7 @@ export const ModelCard = memo(function ModelCard(props: ModelCardProps) {
             </span>
           )}
           <span className='text-muted-foreground text-xs font-medium'>
-            {isTokenBased ? t('Token-based') : t('Per Request')}
+            {isTokenBased ? t('Token-based') : fixedPricingTypeLabel}
           </span>
           {isDynamicPricing && (
             <StatusBadge

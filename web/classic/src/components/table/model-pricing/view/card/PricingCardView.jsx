@@ -39,6 +39,7 @@ import {
   calculateModelPrice,
   formatPriceInfo,
   formatDynamicPriceSummary,
+  getFixedPricingTypeText,
   getLobeHubIcon,
 } from '../../../../../helpers';
 import PricingCardSkeleton from './PricingCardSkeleton';
@@ -163,7 +164,7 @@ const PricingCardView = ({
     if (record.quota_type === 1) {
       billingTag = (
         <Tag key='billing' shape='circle' color='teal' size='small'>
-          {t('按次计费')}
+          {getFixedPricingTypeText(record, t)}
         </Tag>
       );
     } else if (record.quota_type === 0) {

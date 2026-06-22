@@ -65,7 +65,12 @@ import {
   isDynamicPricingModel,
 } from '../lib/dynamic-price'
 import { parseTags } from '../lib/filters'
-import { getAvailableGroups, isTokenBasedModel } from '../lib/model-helpers'
+import {
+  getAvailableGroups,
+  getFixedPricingTypeLabel,
+  isSecondBasedFixedPriceModel,
+  isTokenBasedModel,
+} from '../lib/model-helpers'
 import { formatFixedPrice, formatGroupPrice } from '../lib/price'
 import type {
   ModelCapability,
@@ -460,7 +465,7 @@ function ModelBackendProviderSection(props: { model: PricingModel }) {
       <CatalogTextValue>
         {model.quota_type === QUOTA_TYPE_VALUES.TOKEN
           ? t('Token-based')
-          : t('Per Request')}
+          : getFixedPricingTypeLabel(model, t)}
       </CatalogTextValue>
     </CatalogInfoCell>
   )
@@ -558,7 +563,7 @@ function ModelHeader(props: { model: PricingModel }) {
         <span className='text-muted-foreground/70'>
           {model.quota_type === QUOTA_TYPE_VALUES.TOKEN
             ? t('Token-based')
-            : t('Per Request')}
+            : getFixedPricingTypeLabel(model, t)}
         </span>
         {model.billing_mode === 'tiered_expr' && model.billing_expr && (
           <>
@@ -726,7 +731,9 @@ function PriceSection(props: {
         <SectionTitle>{t('Base Price')}</SectionTitle>
         <div className='flex items-baseline justify-between'>
           <span className='text-muted-foreground text-sm'>
-            {t('Per request')}
+            {isSecondBasedFixedPriceModel(props.model)
+              ? t('Per second')
+              : t('Per request')}
           </span>
           <span className='text-foreground font-mono text-sm font-semibold tabular-nums'>
             {formatFixedPrice(
