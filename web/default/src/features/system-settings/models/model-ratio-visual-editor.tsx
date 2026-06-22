@@ -39,6 +39,8 @@ import { Copy, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import {
   DataTableBulkActions,
   DataTableToolbar,
@@ -61,6 +63,7 @@ import {
   type ModelRow,
 } from './model-pricing-snapshots'
 import { buildModelRatioColumns } from './model-ratio-table-columns'
+import { useModelCatalogNames } from './use-model-catalog-names'
 
 type ModelRatioVisualEditorProps = {
   savedModelPrice: string
@@ -91,6 +94,8 @@ type ModelRatioVisualEditorProps = {
 export type ModelRatioVisualEditorHandle = {
   commitOpenEditor: () => Promise<boolean>
 }
+
+type PricingScope = 'catalog' | 'all'
 
 const STORAGE_KEY = 'model-ratio-column-visibility'
 
@@ -127,6 +132,17 @@ const ModelRatioVisualEditorComponent = forwardRef<
 ) {
   const { t } = useTranslation()
   const isMobile = useMediaQuery('(max-width: 767px)')
+  const {
+    modelNames: catalogModelNames,
+    loading: catalogLoading,
+    error: catalogError,
+  } = useModelCatalogNames()
+  const catalogModelNameSet = useMemo(
+    () => new Set(catalogModelNames),
+    [catalogModelNames]
+  )
+  const catalogSignature = catalogModelNames.join('\n')
+  const [pricingScope, setPricingScope] = useState<PricingScope>('catalog')
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editorOpen, setEditorOpen] = useState(false)
   const [editData, setEditData] = useState<ModelRatioData | null>(null)
@@ -178,6 +194,18 @@ const ModelRatioVisualEditorComponent = forwardRef<
     localStorage.setItem(STORAGE_KEY, JSON.stringify(columnVisibility))
   }, [columnVisibility])
 
+  useEffect(() => {
+    setPagination((previous) =>
+      previous.pageIndex === 0 ? previous : { ...previous, pageIndex: 0 }
+    )
+    setRowSelection({})
+    setEditData(null)
+    setEditorOpen(false)
+    setSheetOpen(false)
+  }, [pricingScope, catalogSignature])
+
+  const shouldFilterByCatalog = pricingScope === 'catalog' && !catalogError
+
   const models = useMemo(() => {
     const savedRows = buildModelSnapshots({
       modelPrice: savedModelPrice,
@@ -206,7 +234,11 @@ const ModelRatioVisualEditorComponent = forwardRef<
 
     const savedByName = new Map(savedRows.map((row) => [row.name, row]))
     const draftByName = new Map(draftRows.map((row) => [row.name, row]))
-    const modelNames = new Set([...savedByName.keys(), ...draftByName.keys()])
+    const modelNames = new Set([
+      ...catalogModelNames,
+      ...savedByName.keys(),
+      ...draftByName.keys(),
+    ])
 
     return Array.from(modelNames)
       .map((name) => {
@@ -226,8 +258,12 @@ const ModelRatioVisualEditorComponent = forwardRef<
         }
       })
       .filter((row) => !row.isDraftDeleted)
+      .filter((row) => !shouldFilterByCatalog || catalogModelNameSet.has(row.name))
       .sort((a, b) => a.name.localeCompare(b.name))
   }, [
+    catalogModelNames,
+    catalogModelNameSet,
+    shouldFilterByCatalog,
     savedModelPrice,
     savedModelRatio,
     savedCacheRatio,
@@ -249,6 +285,18 @@ const ModelRatioVisualEditorComponent = forwardRef<
     billingMode,
     billingExpr,
   ])
+
+  const handlePricingScopeChange = useCallback(
+    (value: string[]) => {
+      const nextScope = value.find((item) => item !== pricingScope) as
+        | PricingScope
+        | undefined
+      if (nextScope === 'catalog' || nextScope === 'all') {
+        setPricingScope(nextScope)
+      }
+    },
+    [pricingScope]
+  )
 
   const modeCounts = useMemo(
     () =>
@@ -624,6 +672,15 @@ const ModelRatioVisualEditorComponent = forwardRef<
   )
 
   const hasRows = table.getRowModel().rows.length > 0
+  const emptyMessage = table.getState().globalFilter
+    ? t('No models match your search')
+    : catalogLoading && pricingScope === 'catalog'
+      ? t('Loading model catalog...')
+      : shouldFilterByCatalog && catalogModelNames.length === 0
+        ? t(
+            'No models in model catalog. Add models in Model Management or switch to all pricing entries.'
+          )
+        : t('No models configured. Use Add model to get started.')
 
   return (
     <div className='flex flex-col gap-4'>
@@ -632,6 +689,38 @@ const ModelRatioVisualEditorComponent = forwardRef<
           <DataTableToolbar
             table={table}
             searchPlaceholder={t('Search models...')}
+            additionalSearch={
+              <div className='flex flex-wrap items-center gap-2'>
+                <ToggleGroup
+                  value={[pricingScope]}
+                  onValueChange={handlePricingScopeChange}
+                  aria-label={t('Pricing list scope')}
+                  variant='outline'
+                  size='default'
+                  spacing={0}
+                >
+                  <ToggleGroupItem value='catalog'>
+                    {t('Model catalog')}
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value='all'>
+                    {t('All pricing entries')}
+                  </ToggleGroupItem>
+                </ToggleGroup>
+                {catalogLoading && pricingScope === 'catalog' ? (
+                  <span className='text-muted-foreground inline-flex items-center gap-1.5 text-xs'>
+                    <Spinner className='size-3.5' />
+                    {t('Loading model catalog...')}
+                  </span>
+                ) : null}
+                {catalogError ? (
+                  <span className='text-muted-foreground text-xs'>
+                    {t(
+                      'Model catalog unavailable; showing all pricing entries.'
+                    )}
+                  </span>
+                ) : null}
+              </div>
+            }
             filters={[
               {
                 columnId: 'billingMode',
@@ -665,9 +754,7 @@ const ModelRatioVisualEditorComponent = forwardRef<
 
           {!hasRows ? (
             <div className='text-muted-foreground rounded-lg border border-dashed p-8 text-center'>
-              {table.getState().globalFilter
-                ? t('No models match your search')
-                : t('No models configured. Use Add model to get started.')}
+              {emptyMessage}
             </div>
           ) : (
             <DataTableView
