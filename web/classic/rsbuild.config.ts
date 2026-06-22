@@ -6,6 +6,8 @@ import { pluginReact } from '@rsbuild/plugin-react'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const require = createRequire(import.meta.url)
+const resolvePackageDir = (packageName: string, paths: string[] = [__dirname]) =>
+  path.dirname(require.resolve(`${packageName}/package.json`, { paths }))
 const semiUiDir = path.resolve(
   path.dirname(require.resolve('@douyinfe/semi-ui')),
   '../..',
@@ -13,6 +15,9 @@ const semiUiDir = path.resolve(
 const semiDateFnsDir = path.dirname(
   require.resolve('date-fns/package.json', { paths: [semiUiDir] }),
 )
+const vchartDir = resolvePackageDir('@visactor/vchart')
+const resolveVChartDependencyDir = (packageName: string) =>
+  resolvePackageDir(packageName, [vchartDir])
 
 export default defineConfig(({ envMode }) => {
   const env = loadEnv({ mode: envMode, prefixes: ['VITE_'] })
@@ -51,6 +56,29 @@ export default defineConfig(({ envMode }) => {
           'dist/css/semi.css',
         ),
         'date-fns': semiDateFnsDir,
+        '@visactor/react-vchart': resolvePackageDir('@visactor/react-vchart'),
+        '@visactor/vchart': vchartDir,
+        '@visactor/vchart-semi-theme': resolvePackageDir(
+          '@visactor/vchart-semi-theme',
+        ),
+        '@visactor/vchart-theme-utils': resolvePackageDir(
+          '@visactor/vchart-theme-utils',
+        ),
+        '@visactor/vdataset': resolveVChartDependencyDir('@visactor/vdataset'),
+        '@visactor/vrender-components': resolveVChartDependencyDir(
+          '@visactor/vrender-components',
+        ),
+        '@visactor/vrender-core': resolveVChartDependencyDir(
+          '@visactor/vrender-core',
+        ),
+        '@visactor/vrender-kits': resolveVChartDependencyDir(
+          '@visactor/vrender-kits',
+        ),
+        '@visactor/vscale': resolveVChartDependencyDir('@visactor/vscale'),
+        '@visactor/vutils': resolveVChartDependencyDir('@visactor/vutils'),
+        '@visactor/vutils-extension': resolveVChartDependencyDir(
+          '@visactor/vutils-extension',
+        ),
       },
     },
     html: {
