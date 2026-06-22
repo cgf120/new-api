@@ -51,6 +51,9 @@ import {
   getUptimeStatusText,
   renderMonitorList,
 } from '../../helpers/dashboard';
+import { ensureVChartBrowserEnv } from '../../helpers/vchart';
+
+ensureVChartBrowserEnv();
 
 const Dashboard = () => {
   // ========== Context ==========
