@@ -429,6 +429,75 @@ function buildImageSample(lang: Lang, ctx: SampleContext): string {
   ].join('\n')
 }
 
+function buildImageEditSample(lang: Lang, ctx: SampleContext): string {
+  const url = `${ctx.baseUrl}${ctx.endpointPath}`
+  const prompt = 'Place the product on a clean white studio background.'
+
+  if (lang === 'curl') {
+    return [
+      `curl ${url} \\`,
+      `  -H "Authorization: Bearer $${ctx.apiKeyEnv}" \\`,
+      `  -F "model=${ctx.modelName}" \\`,
+      `  -F "prompt=${prompt}" \\`,
+      `  -F "size=1024x1024" \\`,
+      `  -F "image=@input.png"`,
+    ].join('\n')
+  }
+  if (lang === 'python') {
+    return [
+      'from openai import OpenAI',
+      '',
+      `client = OpenAI(base_url="${ctx.baseUrl}/v1", api_key="<YOUR_API_KEY>")`,
+      '',
+      'with open("input.png", "rb") as image:',
+      '    response = client.images.edit(',
+      `        model="${ctx.modelName}",`,
+      '        image=image,',
+      `        prompt="${prompt}",`,
+      '        size="1024x1024",',
+      '    )',
+      '',
+      'print(response.data[0].b64_json or response.data[0].url)',
+    ].join('\n')
+  }
+  if (lang === 'typescript') {
+    return [
+      `import fs from 'node:fs'`,
+      `import OpenAI from 'openai'`,
+      '',
+      `const client = new OpenAI({`,
+      `  baseURL: '${ctx.baseUrl}/v1',`,
+      `  apiKey: process.env.${ctx.apiKeyEnv},`,
+      `})`,
+      '',
+      `const response = await client.images.edit({`,
+      `  model: '${ctx.modelName}',`,
+      `  image: fs.createReadStream('input.png') as any,`,
+      `  prompt: '${prompt}',`,
+      `  size: '1024x1024',`,
+      `})`,
+      '',
+      `console.log(response.data[0].b64_json ?? response.data[0].url)`,
+    ].join('\n')
+  }
+  return [
+    `const form = new FormData()`,
+    `form.append('model', '${ctx.modelName}')`,
+    `form.append('prompt', '${prompt}')`,
+    `form.append('size', '1024x1024')`,
+    `form.append('image', imageFile)`,
+    '',
+    `const response = await fetch('${url}', {`,
+    `  method: 'POST',`,
+    `  headers: { Authorization: \`Bearer \${process.env.${ctx.apiKeyEnv}}\` },`,
+    `  body: form,`,
+    `})`,
+    '',
+    `const data = await response.json()`,
+    `console.log(data.data[0].b64_json ?? data.data[0].url)`,
+  ].join('\n')
+}
+
 function buildSample(
   lang: Lang,
   endpointType: string,
@@ -439,6 +508,7 @@ function buildSample(
   if (endpointType === 'embeddings' || endpointType === 'jina-rerank')
     return buildEmbeddingSample(lang, ctx)
   if (endpointType === 'image-generation') return buildImageSample(lang, ctx)
+  if (endpointType === 'image-edit') return buildImageEditSample(lang, ctx)
   return buildChatSample(lang, ctx)
 }
 

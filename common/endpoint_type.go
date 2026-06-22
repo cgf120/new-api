@@ -2,8 +2,25 @@ package common
 
 import "github.com/QuantumNous/new-api/constant"
 
-// GetEndpointTypesByChannelType 获取渠道最优先端点类型（所有的渠道都支持 OpenAI 端点）
+// GetEndpointTypesByChannelType returns the public endpoint types supported by a
+// model on a channel. Media generation models use dedicated OpenAI-compatible
+// endpoints and should not inherit the channel's generic text endpoints.
 func GetEndpointTypesByChannelType(channelType int, modelName string) []constant.EndpointType {
+	if IsVideoGenerationModel(modelName) {
+		return []constant.EndpointType{constant.EndpointTypeOpenAIVideo}
+	}
+
+	var imageEndpointTypes []constant.EndpointType
+	if IsImageGenerationModel(modelName) {
+		imageEndpointTypes = append(imageEndpointTypes, constant.EndpointTypeImageGeneration)
+	}
+	if IsImageEditModel(modelName) {
+		imageEndpointTypes = append(imageEndpointTypes, constant.EndpointTypeImageEdit)
+	}
+	if len(imageEndpointTypes) > 0 {
+		return imageEndpointTypes
+	}
+
 	var endpointTypes []constant.EndpointType
 	switch channelType {
 	case constant.ChannelTypeJina:
@@ -28,9 +45,6 @@ func GetEndpointTypesByChannelType(channelType int, modelName string) []constant
 		endpointTypes = []constant.EndpointType{constant.EndpointTypeOpenAI}
 	case constant.ChannelTypeXai:
 		endpointTypes = []constant.EndpointType{constant.EndpointTypeOpenAI, constant.EndpointTypeOpenAIResponse}
-		if IsVideoGenerationModel(modelName) {
-			endpointTypes = append([]constant.EndpointType{constant.EndpointTypeOpenAIVideo}, endpointTypes...)
-		}
 	case constant.ChannelTypeSora:
 		endpointTypes = []constant.EndpointType{constant.EndpointTypeOpenAIVideo}
 	default:
@@ -39,10 +53,6 @@ func GetEndpointTypesByChannelType(channelType int, modelName string) []constant
 		} else {
 			endpointTypes = []constant.EndpointType{constant.EndpointTypeOpenAI}
 		}
-	}
-	if IsImageGenerationModel(modelName) {
-		// add to first
-		endpointTypes = append([]constant.EndpointType{constant.EndpointTypeImageGeneration}, endpointTypes...)
 	}
 	return endpointTypes
 }

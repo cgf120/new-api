@@ -58,6 +58,10 @@ func (a *Adaptor) ConvertAudioRequest(c *gin.Context, info *relaycommon.RelayInf
 }
 
 func (a *Adaptor) ConvertImageRequest(c *gin.Context, info *relaycommon.RelayInfo, request dto.ImageRequest) (any, error) {
+	if model_setting.IsGeminiModelSupportImagine(info.UpstreamModelName) {
+		return oaiImage2GeminiGenerateContentImageRequest(c, info, request)
+	}
+
 	if !strings.HasPrefix(info.UpstreamModelName, "imagen") {
 		return nil, errors.New("not supported model for image generation, only imagen models are supported")
 	}
@@ -172,6 +176,9 @@ func (a *Adaptor) GetRequestURL(info *relaycommon.RelayInfo) (string, error) {
 
 func (a *Adaptor) SetupRequestHeader(c *gin.Context, req *http.Header, info *relaycommon.RelayInfo) error {
 	channel.SetupApiRequestHeader(info, c, req)
+	if info.RelayMode == constant.RelayModeImagesGenerations || info.RelayMode == constant.RelayModeImagesEdits {
+		req.Set("Content-Type", "application/json")
+	}
 	req.Set("x-goog-api-key", info.ApiKey)
 	return nil
 }
@@ -261,6 +268,11 @@ func (a *Adaptor) DoResponse(c *gin.Context, resp *http.Response, info *relaycom
 
 	if strings.HasPrefix(info.UpstreamModelName, "imagen") {
 		return GeminiImageHandler(c, info, resp)
+	}
+
+	if (info.RelayMode == constant.RelayModeImagesGenerations || info.RelayMode == constant.RelayModeImagesEdits) &&
+		model_setting.IsGeminiModelSupportImagine(info.UpstreamModelName) {
+		return GeminiGenerateContentImageHandler(c, info, resp)
 	}
 
 	// check if the model is an embedding model

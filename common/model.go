@@ -13,11 +13,33 @@ var (
 		"dall-e-3",
 		"dall-e-2",
 		"gpt-image-1",
+		"gpt-image-2",
+		"chatgpt-image-latest",
+		"grok-imagine-image-pro",
 		"grok-imagine-image",
+		"grok-imagine-image-lite",
 		"grok-2-image-1212",
+		"gemini-2.5-flash-image",
+		"gemini-3-pro-image-preview",
+		"gemini-3.1-pro-image",
+		"gemini-3.1-flash-image",
+		"gemini-3.1-flash-image-preview",
+		"nano-banana",
 		"prefix:imagen-",
 		"flux-",
 		"flux.1-",
+	}
+	ImageEditModels = []string{
+		"prefix:gpt-image-",
+		"chatgpt-image-latest",
+		"grok-imagine-image",
+		"grok-imagine-image-pro",
+		"gemini-2.5-flash-image",
+		"gemini-3-pro-image-preview",
+		"gemini-3.1-pro-image",
+		"gemini-3.1-flash-image",
+		"gemini-3.1-flash-image-preview",
+		"prefix:nano-banana",
 	}
 	OpenAITextModels = []string{
 		"gpt-",
@@ -49,6 +71,28 @@ func IsImageGenerationModel(modelName string) bool {
 			return true
 		}
 		if strings.HasPrefix(m, "prefix:") && strings.HasPrefix(modelName, strings.TrimPrefix(m, "prefix:")) {
+			return true
+		}
+	}
+	return false
+}
+
+func IsImageEditModel(modelName string) bool {
+	modelName = strings.ToLower(modelName)
+	for _, m := range ImageEditModels {
+		if strings.HasPrefix(m, "prefix:") {
+			if strings.HasPrefix(modelName, strings.TrimPrefix(m, "prefix:")) {
+				return true
+			}
+			continue
+		}
+		if strings.HasPrefix(m, "contains:") {
+			if strings.Contains(modelName, strings.TrimPrefix(m, "contains:")) {
+				return true
+			}
+			continue
+		}
+		if modelName == m {
 			return true
 		}
 	}

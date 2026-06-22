@@ -8,8 +8,9 @@ import (
 
 func TestGetEndpointTypesByChannelType_XaiVideo(t *testing.T) {
 	endpoints := GetEndpointTypesByChannelType(constant.ChannelTypeXai, "grok-imagine-video")
-	if len(endpoints) == 0 || endpoints[0] != constant.EndpointTypeOpenAIVideo {
-		t.Fatalf("endpoints = %v, want openai-video first", endpoints)
+	want := []constant.EndpointType{constant.EndpointTypeOpenAIVideo}
+	if !equalEndpointTypes(endpoints, want) {
+		t.Fatalf("endpoints = %v, want %v", endpoints, want)
 	}
 }
 
@@ -24,8 +25,20 @@ func TestGetEndpointTypesByChannelType_XaiTextDoesNotAdvertiseVideo(t *testing.T
 
 func TestGetEndpointTypesByChannelType_XaiImage(t *testing.T) {
 	endpoints := GetEndpointTypesByChannelType(constant.ChannelTypeXai, "grok-imagine-image-lite")
-	if len(endpoints) == 0 || endpoints[0] != constant.EndpointTypeImageGeneration {
-		t.Fatalf("endpoints = %v, want image-generation first", endpoints)
+	want := []constant.EndpointType{constant.EndpointTypeImageGeneration}
+	if !equalEndpointTypes(endpoints, want) {
+		t.Fatalf("endpoints = %v, want %v", endpoints, want)
+	}
+}
+
+func TestGetEndpointTypesByChannelType_ImageEdit(t *testing.T) {
+	endpoints := GetEndpointTypesByChannelType(constant.ChannelTypeGemini, "gemini-3.1-flash-image")
+	want := []constant.EndpointType{
+		constant.EndpointTypeImageGeneration,
+		constant.EndpointTypeImageEdit,
+	}
+	if !equalEndpointTypes(endpoints, want) {
+		t.Fatalf("endpoints = %v, want %v", endpoints, want)
 	}
 }
 
@@ -37,4 +50,16 @@ func TestGetDefaultEndpointInfoOpenAIVideo(t *testing.T) {
 	if info.Path != "/v1/videos" {
 		t.Fatalf("path = %q, want /v1/videos", info.Path)
 	}
+}
+
+func equalEndpointTypes(a, b []constant.EndpointType) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }

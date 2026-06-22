@@ -215,6 +215,8 @@ func testChannel(channel *model.Channel, testUserID int, testModel string, endpo
 			relayFormat = types.RelayFormatRerank
 		case constant.EndpointTypeImageGeneration:
 			relayFormat = types.RelayFormatOpenAIImage
+		case constant.EndpointTypeImageEdit:
+			relayFormat = types.RelayFormatOpenAIImage
 		case constant.EndpointTypeEmbeddings:
 			relayFormat = types.RelayFormatEmbedding
 		default:
@@ -848,6 +850,15 @@ func buildTestRequest(model string, endpointType string, channel *model.Channel,
 				N:      lo.ToPtr(uint(1)),
 				Size:   "1024x1024",
 			}
+		case constant.EndpointTypeImageEdit:
+			// 返回 ImageRequest
+			return &dto.ImageRequest{
+				Model:  model,
+				Prompt: "add a small blue hat to the cat",
+				N:      lo.ToPtr(uint(1)),
+				Size:   "1024x1024",
+				Image:  json.RawMessage(`"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII="`),
+			}
 		case constant.EndpointTypeJinaRerank:
 			// 返回 RerankRequest
 			return &dto.RerankRequest{
@@ -919,6 +930,15 @@ func buildTestRequest(model string, endpointType string, channel *model.Channel,
 		return &dto.OpenAIResponsesCompactionRequest{
 			Model: model,
 			Input: testResponsesInput,
+		}
+	}
+
+	if common.IsImageGenerationModel(model) {
+		return &dto.ImageRequest{
+			Model:  model,
+			Prompt: "a cute cat",
+			N:      lo.ToPtr(uint(1)),
+			Size:   "1024x1024",
 		}
 	}
 
