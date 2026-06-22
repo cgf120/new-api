@@ -28,6 +28,7 @@ export type TopNavLink = {
   disabled?: boolean
   requiresAuth?: boolean
   external?: boolean
+  openInNewTab?: boolean
 }
 
 /**
@@ -87,8 +88,18 @@ export function useTopNavLinks(): TopNavLink[] {
 
   // Docs (supports external links)
   if (modules?.docs !== false) {
-    if (docsLink) {
-      links.push({ title: t('Docs'), href: docsLink, external: true })
+    const normalizedDocsLink =
+      typeof docsLink === 'string' ? docsLink.trim() : ''
+    if (normalizedDocsLink) {
+      const isExternalDocsLink = /^[a-z][a-z\d+\-.]*:\/\//i.test(
+        normalizedDocsLink
+      )
+      links.push({
+        title: t('Docs'),
+        href: normalizedDocsLink,
+        external: isExternalDocsLink,
+        openInNewTab: false,
+      })
     } else {
       links.push({ title: t('Docs'), href: '/docs' })
     }
