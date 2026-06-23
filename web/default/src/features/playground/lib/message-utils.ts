@@ -17,13 +17,127 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { nanoid } from 'nanoid'
+
 import { MESSAGE_ROLES, MESSAGE_STATUS, ERROR_MESSAGES } from '../constants'
 import type {
   Message,
   MessageVersion,
+  MessageRole,
+  MessageStatus,
   ChatCompletionMessage,
   ContentPart,
 } from '../types'
+
+type MessageRecord = Record<string, unknown>
+
+const VALID_MESSAGE_ROLES = new Set<string>([
+  MESSAGE_ROLES.USER,
+  MESSAGE_ROLES.ASSISTANT,
+  MESSAGE_ROLES.SYSTEM,
+])
+
+const VALID_MESSAGE_STATUSES = new Set<string>(Object.values(MESSAGE_STATUS))
+
+function isRecord(value: unknown): value is MessageRecord {
+  return typeof value === 'object' && value !== null
+}
+
+function coerceStoredContent(value: unknown): string {
+  if (typeof value === 'string') return value
+  if (value === null || value === undefined) return ''
+
+  if (Array.isArray(value)) {
+    return value
+      .map((part) => {
+        if (!isRecord(part)) return ''
+        if (typeof part.text === 'string') return part.text
+        const imageUrl = part.image_url
+        if (isRecord(imageUrl) && typeof imageUrl.url === 'string') {
+          return imageUrl.url
+        }
+        return ''
+      })
+      .filter(Boolean)
+      .join('\n')
+  }
+
+  return String(value)
+}
+
+function normalizeStoredVersion(version: unknown): {
+  version: MessageVersion | null
+  changed: boolean
+} {
+  if (!isRecord(version)) return { version: null, changed: true }
+
+  const id =
+    typeof version.id === 'string' && version.id ? version.id : nanoid()
+  const content = coerceStoredContent(version.content)
+  const changed = id !== version.id || content !== version.content
+
+  return {
+    version: { id, content },
+    changed,
+  }
+}
+
+function normalizeStoredMessage(value: unknown): {
+  message: Message | null
+  changed: boolean
+} {
+  if (!isRecord(value)) return { message: null, changed: true }
+
+  let rawFrom = ''
+  if (typeof value.from === 'string') {
+    rawFrom = value.from
+  } else if (typeof value.role === 'string') {
+    rawFrom = value.role
+  }
+  if (!VALID_MESSAGE_ROLES.has(rawFrom)) {
+    return { message: null, changed: true }
+  }
+
+  let changed = value.from !== rawFrom
+  let key = nanoid()
+  if (typeof value.key === 'string' && value.key) {
+    key = value.key
+  } else if (typeof value.id === 'string' && value.id) {
+    key = value.id
+  }
+  changed = changed || key !== value.key
+
+  const rawVersions = Array.isArray(value.versions) ? value.versions : []
+  const normalizedVersions: MessageVersion[] = []
+  for (const rawVersion of rawVersions) {
+    const normalized = normalizeStoredVersion(rawVersion)
+    changed = changed || normalized.changed
+    if (normalized.version) normalizedVersions.push(normalized.version)
+  }
+
+  if (normalizedVersions.length === 0) {
+    normalizedVersions.push(
+      createMessageVersion(coerceStoredContent(value.content))
+    )
+    changed = true
+  }
+
+  const status =
+    typeof value.status === 'string' && VALID_MESSAGE_STATUSES.has(value.status)
+      ? (value.status as MessageStatus)
+      : undefined
+  changed = changed || value.status !== status
+
+  return {
+    message: {
+      ...(value as Partial<Message>),
+      key,
+      from: rawFrom as MessageRole,
+      versions: normalizedVersions,
+      status,
+    },
+    changed,
+  }
+}
 
 /**
  * Create a new message version
@@ -142,7 +256,7 @@ export function formatMessageForAPI(message: Message): ChatCompletionMessage {
  * Excludes loading/streaming assistant messages and empty content
  */
 export function isValidMessage(message: Message): boolean {
-  if (!message || !message.from || !message.versions.length) return false
+  if (!message || !message.from || !message.versions?.length) return false
 
   const content = message.versions[0]?.content
   if (content === undefined) return false
@@ -246,7 +360,7 @@ export function updateLastAssistantMessage(
   updater: (message: Message) => Message
 ): Message[] {
   if (messages.length === 0) return messages
-  const last = messages[messages.length - 1]
+  const last = messages.at(-1)
   if (!last || last.from !== MESSAGE_ROLES.ASSISTANT) return messages
 
   const updated = [...messages]
@@ -314,9 +428,22 @@ export function finalizeMessage(
  * Converts stuck loading/streaming messages to stable state
  */
 export function sanitizeMessagesOnLoad(messages: Message[]): Message[] {
+  const normalizedMessages: Message[] = []
+  let changed = false
+
+  for (const rawMessage of messages) {
+    const normalized = normalizeStoredMessage(rawMessage)
+    changed = changed || normalized.changed
+    if (normalized.message) normalizedMessages.push(normalized.message)
+  }
+
+  if (normalizedMessages.length !== messages.length) {
+    changed = true
+  }
+
   let targetIndex = -1
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const m = messages[i]
+  for (let i = normalizedMessages.length - 1; i >= 0; i--) {
+    const m = normalizedMessages[i]
     if (
       m?.from === MESSAGE_ROLES.ASSISTANT &&
       (m?.status === MESSAGE_STATUS.LOADING ||
@@ -327,9 +454,11 @@ export function sanitizeMessagesOnLoad(messages: Message[]): Message[] {
     }
   }
 
-  if (targetIndex === -1) return messages
+  if (targetIndex === -1) {
+    return changed ? normalizedMessages : messages
+  }
 
-  const finalized = finalizeMessage(messages[targetIndex])
+  const finalized = finalizeMessage(normalizedMessages[targetIndex])
   const hasContent = finalized.versions?.[0]?.content?.trim()
   const hasReasoning = finalized.reasoning?.content?.trim()
 
@@ -349,7 +478,7 @@ export function sanitizeMessagesOnLoad(messages: Message[]): Message[] {
           isReasoningStreaming: false,
         }
 
-  const result = [...messages]
+  const result = [...normalizedMessages]
   result[targetIndex] = sanitized
   return result
 }
