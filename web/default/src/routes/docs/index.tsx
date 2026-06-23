@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2023-2026 QuantumNous
+Copyright (C) 2025 QuantumNous
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as
@@ -16,994 +16,1586 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { type ElementType, useMemo, useState } from 'react'
-import { Link, createFileRoute } from '@tanstack/react-router'
+// @ts-nocheck
+
+import React, { useEffect, useMemo, useState } from 'react';
+import { createFileRoute } from '@tanstack/react-router';
 import {
-  AlertTriangle,
-  ArrowRight,
+  AlertCircle,
   BookOpen,
   CheckCircle2,
-  CircleDollarSign,
   Code2,
-  Copy,
+  Copy as IconCopy,
   FileImage,
-  Image as ImageIcon,
+  Image,
   KeyRound,
-  Loader2,
   MessageSquareText,
-  Play,
+  Play as IconPlay,
   Server,
-  ShieldAlert,
-  Terminal,
   Video,
-} from 'lucide-react'
-import { useStatus } from '@/hooks/use-status'
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
-import {
-  CodeBlock,
-  CodeBlockCopyButton,
-} from '@/components/ai-elements/code-block'
-import { PublicLayout } from '@/components/layout'
+} from 'lucide-react';
+import { useStatus } from '@/hooks/use-status';
+import { PublicLayout } from '@/components/layout';
 
 export const Route = createFileRoute('/docs/')({
-  component: ApiDocs,
-})
+  component: Docs,
+});
 
-type EndpointDoc = {
-  id: string
-  title: string
-  method: 'GET' | 'POST'
-  path: string
-  badge: string
-  description: string
-  billable?: string
-  requestBody?: string
-  multipart?: boolean
+function Title({ heading = 3, className = '', children }) {
+  const TagName = `h${heading}`;
+  return <TagName className={className}>{children}</TagName>;
 }
 
-type RunResult = {
-  status: number | string
-  elapsedMs: number
-  body: string
-  imageUrl?: string
-  mediaUrl?: string
+function Text({ type, strong, size, code, className = '', children }) {
+  const classes = [
+    type === 'secondary' ? 'docs-text-secondary' : '',
+    type === 'tertiary' ? 'docs-text-tertiary' : '',
+    strong ? 'docs-text-strong' : '',
+    size === 'small' ? 'docs-text-small' : '',
+    code ? 'docs-text-code' : '',
+    className,
+  ]
+    .filter(Boolean)
+    .join(' ');
+  return <span className={classes}>{children}</span>;
 }
 
-const navItems = [
-  { id: 'quickstart', label: '快速开始' },
-  { id: 'models', label: '模型与端点' },
-  { id: 'text', label: '文本与多模态' },
-  { id: 'image', label: '图片生成与编辑' },
-  { id: 'video', label: '视频生成' },
-  { id: 'billing', label: '计费与错误' },
-]
+function Divider({ margin = '16px' }) {
+  return <div className='docs-divider' style={{ margin }} />;
+}
 
-const endpointDocs: EndpointDoc[] = [
+function Button({ icon, loading, children, onClick, style, size }) {
+  return (
+    <button
+      type='button'
+      onClick={onClick}
+      disabled={loading}
+      style={style}
+      className={`docs-button ${size === 'small' ? 'small' : ''}`}
+    >
+      {loading ? <span className='docs-spinner' /> : icon}
+      <span>{children}</span>
+    </button>
+  );
+}
+
+function Input({ value, onChange, placeholder, mode, autoComplete, style }) {
+  return (
+    <input
+      value={value}
+      onChange={(event) => onChange?.(event.target.value)}
+      placeholder={placeholder}
+      type={mode === 'password' ? 'password' : 'text'}
+      autoComplete={autoComplete}
+      style={style}
+      className='docs-input'
+    />
+  );
+}
+
+function TextArea({ value, onChange, autosize, className = '' }) {
+  const minRows = autosize?.minRows ?? 8;
+  const maxRows = autosize?.maxRows ?? 14;
+  return (
+    <textarea
+      value={value}
+      onChange={(event) => onChange?.(event.target.value)}
+      rows={minRows}
+      className={`docs-textarea ${className}`}
+      style={{ maxHeight: `${maxRows * 1.7}em` }}
+    />
+  );
+}
+
+function Select({ value, onChange, optionList, style }) {
+  return (
+    <select
+      value={value}
+      onChange={(event) => onChange?.(event.target.value)}
+      style={style}
+      className='docs-select'
+    >
+      {optionList.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function Tag({ color, children }) {
+  return <span className={`docs-tag ${color ? `docs-tag-${color}` : ''}`}>{children}</span>;
+}
+
+const docs = [
+  {
+    id: 'introduction',
+    group: '开始',
+    label: 'API 介绍',
+    title: 'API 参考',
+    eyebrow: 'Introduction',
+    icon: BookOpen,
+    description:
+      '柚子中转提供 OpenAI 兼容接口，并将 GPT、Gemini、Grok 等图片和视频能力统一到稳定的 API 入口。',
+    type: 'guide',
+  },
   {
     id: 'models',
+    group: '模型',
+    label: '获取模型列表',
     title: '获取模型列表',
+    eyebrow: 'Model Discovery',
+    icon: Server,
     method: 'GET',
     path: '/v1/models',
-    badge: 'Discovery',
     description:
-      '返回当前 Key 可用的模型，以及每个模型支持的 supported_endpoint_types。',
+      '返回当前令牌可用的模型列表，并通过 supported_endpoint_types 标明每个模型支持的 API 端点。',
+    params: [],
+    responseExample: {
+      object: 'list',
+      data: [
+        {
+          id: 'gpt-5.5',
+          object: 'model',
+          supported_endpoint_types: ['openai', 'openai-response'],
+        },
+        {
+          id: 'grok-imagine-video',
+          object: 'model',
+          supported_endpoint_types: ['openai-video'],
+        },
+      ],
+    },
+    notes: ['建议客户端启动时缓存模型列表，用于判断模型应走哪个端点。'],
   },
   {
     id: 'chat',
+    group: '文本',
+    label: '文本聊天',
     title: '文本聊天',
+    eyebrow: 'Chat Completions',
+    icon: MessageSquareText,
     method: 'POST',
     path: '/v1/chat/completions',
-    badge: 'Text',
     description:
-      'OpenAI Chat Completions 兼容接口。适合 GPT、Gemini、Grok、Claude 兼容文本模型。',
-    requestBody: JSON.stringify(
-      {
-        model: 'gpt-5.5',
-        messages: [
-          {
-            role: 'user',
-            content: '用一句话说明这个 API 文档支持哪些能力。',
+      'OpenAI Chat Completions 兼容接口。适合 GPT、Gemini、Grok、Claude 等文本模型。',
+    params: [
+      ['model', 'string', '是', '模型名称，例如 gpt-5.5、gemini-3-flash-preview、grok-4.20-fast。'],
+      ['messages', 'array', '是', 'OpenAI messages 数组。'],
+      ['stream', 'boolean', '否', '是否使用流式输出。'],
+    ],
+    requestBody: {
+      model: 'gpt-5.5',
+      messages: [
+        {
+          role: 'user',
+          content: '用一句话说明这个 API 文档支持哪些能力。',
+        },
+      ],
+    },
+    responseExample: {
+      id: 'chatcmpl_xxx',
+      object: 'chat.completion',
+      choices: [
+        {
+          message: {
+            role: 'assistant',
+            content: '该文档覆盖文本、图片、视频模型的统一调用方式。',
           },
-        ],
-      },
-      null,
-      2
-    ),
+        },
+      ],
+    },
   },
   {
     id: 'json-schema',
+    group: '文本',
+    label: '结构化输出',
     title: '结构化 JSON 输出',
+    eyebrow: 'JSON Schema',
+    icon: Code2,
     method: 'POST',
     path: '/v1/chat/completions',
-    badge: 'JSON Schema',
     description:
-      '对支持结构化输出的文本模型，可以使用 response_format 指定 JSON Schema。',
-    requestBody: JSON.stringify(
-      {
-        model: 'gpt-5.5',
-        messages: [
-          {
-            role: 'user',
-            content: '返回一个适合测试 API 文档的任务对象。',
-          },
-        ],
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'api_doc_task',
-            schema: {
-              type: 'object',
-              additionalProperties: false,
-              required: ['title', 'priority'],
-              properties: {
-                title: { type: 'string' },
-                priority: { type: 'string', enum: ['low', 'medium', 'high'] },
-              },
+      '对支持结构化输出的模型，可以使用 response_format.type = json_schema 约束返回 JSON。',
+    params: [
+      ['response_format.type', 'string', '是', '固定为 json_schema。'],
+      ['response_format.json_schema.schema', 'object', '是', '标准 JSON Schema。'],
+    ],
+    requestBody: {
+      model: 'gpt-5.5',
+      messages: [
+        {
+          role: 'user',
+          content: '返回一个适合测试 API 文档的任务对象。',
+        },
+      ],
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'api_doc_task',
+          schema: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['title', 'priority'],
+            properties: {
+              title: { type: 'string' },
+              priority: { type: 'string', enum: ['low', 'medium', 'high'] },
             },
           },
         },
       },
-      null,
-      2
-    ),
+    },
+    responseExample: {
+      title: '验证 API 文档在线调试',
+      priority: 'medium',
+    },
   },
   {
-    id: 'image-gpt',
-    title: 'GPT 图片生成',
+    id: 'image-generation',
+    group: '图片',
+    label: '图片生成',
+    title: '图片生成',
+    eyebrow: 'Images',
+    icon: Image,
     method: 'POST',
     path: '/v1/images/generations',
-    badge: 'Image',
     description:
-      '统一图片生成接口。当前图片响应会尽量统一为 b64_json，方便代码直接保存。',
+      '统一图片生成接口。GPT、Gemini、Grok 图片模型都可以通过该端点调用，响应优先返回 b64_json。',
+    params: [
+      ['model', 'string', '是', '例如 gpt-image-2、gemini-3.1-flash-image-preview、grok-imagine-image。'],
+      ['prompt', 'string', '是', '图片提示词。'],
+      ['size', 'string', '否', 'OpenAI 风格尺寸，例如 1024x1024。'],
+      ['aspect_ratio', 'string', '否', 'Gemini/Grok 常用比例，例如 1:1、16:9、9:16。'],
+      ['image_size', 'string', '否', 'Gemini 图片尺寸，例如 1K、2K、4K。'],
+    ],
+    requestBody: {
+      model: 'gpt-image-2',
+      prompt: 'A clean product photo of a citrus soda can on a white table.',
+      size: '1024x1024',
+      n: 1,
+      response_format: 'b64_json',
+    },
+    responseExample: {
+      created: 1710000000,
+      data: [{ b64_json: '<base64 image>' }],
+    },
+    notes: [
+      'grok-imagine-image-lite 只建议用于生成。',
+      'Gemini 图片建议优先传 aspect_ratio 与 image_size。',
+    ],
     billable: '按图片计费',
-    requestBody: JSON.stringify(
-      {
-        model: 'gpt-image-2',
-        prompt: 'A clean product photo of a citrus soda can on a white table.',
-        size: '1024x1024',
-        n: 1,
-        response_format: 'b64_json',
-      },
-      null,
-      2
-    ),
-  },
-  {
-    id: 'image-gemini',
-    title: 'Gemini 图片生成',
-    method: 'POST',
-    path: '/v1/images/generations',
-    badge: 'Image',
-    description:
-      'Gemini 图片模型也归一到 OpenAI 图片端点。支持 aspect_ratio 与 image_size。',
-    billable: '按图片/模型配置计费',
-    requestBody: JSON.stringify(
-      {
-        model: 'gemini-3.1-flash-image-preview',
-        prompt: 'A compact desk setup, editorial product photography.',
-        aspect_ratio: '16:9',
-        image_size: '1K',
-        response_format: 'b64_json',
-      },
-      null,
-      2
-    ),
-  },
-  {
-    id: 'image-grok',
-    title: 'Grok 图片生成',
-    method: 'POST',
-    path: '/v1/images/generations',
-    badge: 'Image',
-    description:
-      'Grok Imagine 图片模型使用同一图片端点。lite 不支持图片编辑，normal/pro 支持编辑。',
-    billable: '按图片计费',
-    requestBody: JSON.stringify(
-      {
-        model: 'grok-imagine-image',
-        prompt: 'Cinematic ink wash mountain scene, high detail.',
-        aspect_ratio: '16:9',
-        response_format: 'b64_json',
-      },
-      null,
-      2
-    ),
   },
   {
     id: 'image-edit',
+    group: '图片',
+    label: '图片编辑',
     title: '图片编辑',
+    eyebrow: 'Image Edits',
+    icon: FileImage,
     method: 'POST',
     path: '/v1/images/edits',
-    badge: 'Multipart',
     description:
-      '使用 multipart/form-data 上传 image。支持 gpt-image-2、Gemini 图片模型、grok-imagine-image/pro。',
-    billable: '按图片计费',
+      '使用 multipart/form-data 上传 image 文件。支持 gpt-image-2、Gemini 图片模型、grok-imagine-image/pro。',
     multipart: true,
-    requestBody: JSON.stringify(
-      {
-        model: 'gemini-2.5-flash-image',
-        prompt: '把上传图片改成白底产品图，保留主体结构。',
-        size: '1024x1024',
-        response_format: 'b64_json',
-      },
-      null,
-      2
-    ),
+    params: [
+      ['image', 'file', '是', '上传的 PNG、JPG 或 WebP 图片。'],
+      ['model', 'string', '是', '图片编辑模型。'],
+      ['prompt', 'string', '是', '编辑指令。'],
+      ['size', 'string', '否', '目标尺寸。'],
+    ],
+    requestBody: {
+      model: 'gemini-2.5-flash-image',
+      prompt: '把上传图片改成白底产品图，保留主体结构。',
+      size: '1024x1024',
+      response_format: 'b64_json',
+    },
+    responseExample: {
+      created: 1710000000,
+      data: [{ b64_json: '<base64 edited image>' }],
+    },
+    notes: ['grok-imagine-image-lite 不支持图片编辑，Grok 编辑请使用 normal/pro。'],
+    billable: '按图片计费',
   },
   {
     id: 'video-grok',
+    group: '视频',
+    label: 'Grok 视频生成',
     title: 'Grok 视频生成',
+    eyebrow: 'Videos',
+    icon: Video,
     method: 'POST',
     path: '/v1/videos',
-    badge: 'Video',
     description:
-      'Grok Imagine 视频端点。可使用 image_urls 传参考图；提示词中 @图1、@图2 会按顺序映射到参考图。',
+      'Grok Imagine 视频端点。支持纯文本生成，也可以用 image_urls 传参考图。',
+    params: [
+      ['model', 'string', '是', '固定为 grok-imagine-video。'],
+      ['prompt', 'string', '是', '视频提示词。@图1、@图2 会按 image_urls 顺序绑定参考图。'],
+      ['duration', 'string', '否', '建议 6 或 8，按秒计费。'],
+      ['resolution', 'string', '否', '当前建议 720p。'],
+      ['aspect_ratio', 'string', '否', '16:9、9:16、1:1。'],
+      ['image_urls', 'array', '否', '参考图 URL 数组。'],
+    ],
+    requestBody: {
+      model: 'grok-imagine-video',
+      prompt: '水墨风格，横屏，云海山崖，镜头缓慢推进。',
+      duration: '6',
+      resolution: '720p',
+      aspect_ratio: '16:9',
+      format: 'compact',
+      image_urls: [],
+    },
+    responseExample: {
+      id: 'video_xxx',
+      status: 'succeeded',
+      url: 'https://imagine-public.x.ai/imagine-public/share-videos/example.mp4?dl=0',
+    },
+    notes: [
+      '写了 @图4 但只传 3 张参考图时，@图4 会被当作普通文本处理。',
+      '视频生成耗时通常几十秒到数分钟。',
+    ],
     billable: '按秒计费',
-    requestBody: JSON.stringify(
-      {
-        model: 'grok-imagine-video',
-        prompt: '水墨风格，横屏，云海山崖，镜头缓慢推进。',
-        duration: '6',
-        resolution: '720p',
-        aspect_ratio: '16:9',
-        format: 'compact',
-        image_urls: [],
-      },
-      null,
-      2
-    ),
   },
-]
+  {
+    id: 'errors',
+    group: '计费',
+    label: '计费与错误',
+    title: '计费与错误',
+    eyebrow: 'Billing',
+    icon: AlertCircle,
+    description:
+      '不同模型的计费单位不同。图片一般按张，Grok 视频按秒，文本按 token 或动态规则。',
+    type: 'guide',
+  },
+];
 
-const endpointMap = new Map(endpointDocs.map((item) => [item.id, item]))
+const groupedDocs = docs.reduce((acc, item) => {
+  if (!acc[item.group]) acc[item.group] = [];
+  acc[item.group].push(item);
+  return acc;
+}, {});
 
-function ApiDocs() {
-  const { status } = useStatus()
+const codeLanguages = [
+  { label: 'cURL', value: 'curl' },
+  { label: 'Python', value: 'python' },
+  { label: 'JavaScript', value: 'javascript' },
+];
+
+function Docs() {
+  const { status } = useStatus();
+  const [activeId, setActiveId] = useState(() => getInitialDocId());
+  const activeDoc = docs.find((item) => item.id === activeId) || docs[0];
   const baseUrl = useMemo(() => {
-    const source =
-      (status as Record<string, unknown> | null)?.server_address ??
-      (status as Record<string, unknown> | null)?.serverAddress ??
-      (status?.data as Record<string, unknown> | undefined)?.server_address ??
-      (status?.data as Record<string, unknown> | undefined)?.serverAddress
-    if (typeof source === 'string' && source.trim()) {
-      return source.replace(/\/$/, '')
+    const configured =
+      status?.server_address ??
+      status?.serverAddress ??
+      status?.data?.server_address ??
+      status?.data?.serverAddress;
+    if (configured && typeof configured === 'string') {
+      return configured.replace(/\/$/, '');
     }
-    if (typeof window !== 'undefined') return window.location.origin
-    return 'https://fzw.ai'
-  }, [status])
+    if (typeof window === 'undefined') {
+      return 'https://fzw.ai';
+    }
+    return window.location.origin;
+  }, [status]);
+
+  useEffect(() => {
+    const onHashChange = () => {
+      const next = getInitialDocId();
+      setActiveId(next);
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  const onSelectDoc = (id) => {
+    setActiveId(id);
+    window.history.replaceState(null, '', `/docs#${id}`);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <PublicLayout showMainContainer={false}>
-      <main className='bg-background min-h-svh pt-16'>
-        <DocsHero baseUrl={baseUrl} />
-
-        <div className='mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 py-8 md:px-6 lg:grid-cols-[220px_minmax(0,1fr)_420px] lg:items-start lg:py-10'>
-          <DocsSidebar />
-
-          <article className='min-w-0 space-y-12'>
-            <QuickStartSection baseUrl={baseUrl} />
-            <ModelsSection />
-            <TextSection />
-            <ImageSection />
-            <VideoSection />
-            <BillingSection />
-          </article>
-
-          <TryItPanel baseUrl={baseUrl} />
+      <div className='classic-page-fill docs-page-root'>
+        <div className='docs-layout'>
+          <DocsSidebar activeId={activeDoc.id} onSelectDoc={onSelectDoc} />
+          <DocContent doc={activeDoc} baseUrl={baseUrl} />
+          <RightRail doc={activeDoc} baseUrl={baseUrl} />
         </div>
-      </main>
+        <DocsStyles />
+      </div>
     </PublicLayout>
-  )
+  );
 }
 
-function DocsHero(props: { baseUrl: string }) {
+function DocsSidebar({ activeId, onSelectDoc }) {
   return (
-    <section className='border-border/70 bg-muted/20 border-b'>
-      <div className='mx-auto max-w-7xl px-4 py-12 md:px-6 lg:py-16'>
-        <div className='grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-end'>
-          <div className='space-y-6'>
-            <Badge
-              variant='outline'
-              className='border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-300'
-            >
-              API Docs
-            </Badge>
-            <div className='space-y-4'>
-              <h1 className='max-w-3xl text-4xl leading-tight font-semibold tracking-tight md:text-5xl'>
-                柚子中转 API 文档
-              </h1>
-              <p className='text-muted-foreground max-w-2xl text-base leading-7 md:text-lg'>
-                面向实际可用模型整理的接口说明。文本、图片、视频都按当前网关行为编写，
-                右侧示例可以直接填入 Key 运行测试。
-              </p>
-            </div>
-            <div className='flex flex-wrap gap-3'>
-              <Button render={<a href='#quickstart' />}>
-                开始调用
-                <ArrowRight className='size-4' />
-              </Button>
-              <Button variant='outline' render={<Link to='/pricing' />}>
-                查看模型广场
-              </Button>
-            </div>
+    <aside className='docs-sidebar'>
+      <a href='/' className='docs-brand'>
+        <span className='docs-brand-mark'>Y</span>
+        <span>柚子中转</span>
+      </a>
+      <div className='docs-search'>搜索文档 ⌘K</div>
+      <nav className='docs-nav'>
+        {Object.entries(groupedDocs).map(([group, items]) => (
+          <div key={group} className='docs-nav-group'>
+            <div className='docs-nav-title'>{group}</div>
+            {items.map((item) => {
+              const Icon = item.icon || BookOpen;
+              return (
+                <button
+                  key={item.id}
+                  type='button'
+                  onClick={() => onSelectDoc(item.id)}
+                  className={`docs-nav-item ${activeId === item.id ? 'active' : ''}`}
+                >
+                  {item.method && (
+                    <span className={`method method-${item.method.toLowerCase()}`}>
+                      {item.method}
+                    </span>
+                  )}
+                  {!item.method && <Icon size={14} />}
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
           </div>
-
-          <div className='border-border/70 bg-background/80 overflow-hidden rounded-xl border shadow-sm'>
-            <div className='border-border/70 flex items-center gap-2 border-b px-4 py-3'>
-              <Terminal className='text-emerald-600 size-4' />
-              <span className='text-sm font-medium'>Base URL</span>
-            </div>
-            <div className='space-y-3 p-4'>
-              <code className='bg-muted block rounded-lg px-3 py-2 font-mono text-sm break-all'>
-                {props.baseUrl}
-              </code>
-              <p className='text-muted-foreground text-sm'>
-                所有 OpenAI 兼容 SDK 推荐使用{' '}
-                <code className='bg-muted rounded px-1 py-0.5'>/v1</code>{' '}
-                作为 baseURL 后缀。
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function DocsSidebar() {
-  return (
-    <aside className='hidden lg:sticky lg:top-24 lg:block'>
-      <div className='space-y-2'>
-        <div className='text-muted-foreground px-2 text-xs font-semibold tracking-[0.14em] uppercase'>
-          Contents
-        </div>
-        <nav className='space-y-1'>
-          {navItems.map((item) => (
-            <a
-              key={item.id}
-              href={`#${item.id}`}
-              className='text-muted-foreground hover:bg-muted hover:text-foreground block rounded-lg px-2 py-2 text-sm transition-colors'
-            >
-              {item.label}
-            </a>
-          ))}
-        </nav>
-      </div>
+        ))}
+      </nav>
     </aside>
-  )
+  );
 }
 
-function SectionTitle(props: {
-  id: string
-  icon: ElementType
-  eyebrow: string
-  title: string
-  description: string
-}) {
-  const Icon = props.icon
-  return (
-    <header id={props.id} className='scroll-mt-24 space-y-3'>
-      <div className='text-muted-foreground flex items-center gap-2 text-xs font-semibold tracking-[0.14em] uppercase'>
-        <Icon className='size-4' />
-        {props.eyebrow}
-      </div>
-      <div className='space-y-2'>
-        <h2 className='text-2xl font-semibold tracking-tight md:text-3xl'>
-          {props.title}
-        </h2>
-        <p className='text-muted-foreground max-w-3xl leading-7'>
-          {props.description}
-        </p>
-      </div>
-    </header>
-  )
-}
-
-function QuickStartSection(props: { baseUrl: string }) {
-  const curl = [
-    `curl ${props.baseUrl}/v1/chat/completions \\`,
-    `  -H "Authorization: Bearer $YOUR_API_KEY" \\`,
-    `  -H "Content-Type: application/json" \\`,
-    `  -d '{`,
-    `    "model": "gpt-5.5",`,
-    `    "messages": [{"role": "user", "content": "hi"}]`,
-    `  }'`,
-  ].join('\n')
-
-  return (
-    <section className='space-y-5'>
-      <SectionTitle
-        id='quickstart'
-        icon={BookOpen}
-        eyebrow='Start'
-        title='快速开始'
-        description='创建令牌后，在 Authorization 头里传 Bearer Key。下面的示例可以直接在终端运行。'
-      />
-      <CodeBlock code={curl} language='bash'>
-        <CodeBlockCopyButton />
-      </CodeBlock>
-      <InfoGrid
-        items={[
-          {
-            icon: KeyRound,
-            title: '鉴权',
-            text: '所有接口使用 Authorization: Bearer sk-...。不要把 Key 写进前端公开代码。',
-          },
-          {
-            icon: Server,
-            title: '模型发现',
-            text: '/v1/models 会返回当前 Key 可用模型，并标注 supported_endpoint_types。',
-          },
-          {
-            icon: Code2,
-            title: 'SDK 兼容',
-            text: 'OpenAI Python / JS SDK 可以直接使用。图片和视频请使用对应的 /v1/images 或 /v1/videos 端点。',
-          },
-        ]}
-      />
-    </section>
-  )
-}
-
-function ModelsSection() {
-  return (
-    <section className='space-y-5'>
-      <SectionTitle
-        id='models'
-        icon={Server}
-        eyebrow='Discovery'
-        title='模型与 API 端点'
-        description='模型广场与 /v1/models 返回的是当前网关实际支持的端点，不再展示底层上游的误导性接口。'
-      />
-      <EndpointTable
-        rows={[
-          ['openai', '/v1/chat/completions', '文本聊天兼容接口'],
-          ['openai-response', '/v1/responses', 'Responses 兼容接口'],
-          ['image-generation', '/v1/images/generations', '图片生成'],
-          ['image-edit', '/v1/images/edits', '图片编辑，multipart 上传 image'],
-          ['openai-video', '/v1/videos', '视频生成'],
-          ['gemini', '/v1beta/models/{model}:generateContent', 'Gemini 原生文本接口'],
-          ['anthropic', '/v1/messages', 'Claude 原生消息接口'],
-        ]}
-      />
-      <p className='text-muted-foreground text-sm leading-6'>
-        图片模型只会展示图片端点，视频模型只会展示视频端点。比如
-        <code className='bg-muted mx-1 rounded px-1 py-0.5'>
-          grok-imagine-video
-        </code>
-        只应使用
-        <code className='bg-muted mx-1 rounded px-1 py-0.5'>/v1/videos</code>。
-      </p>
-    </section>
-  )
-}
-
-function TextSection() {
-  return (
-    <section className='space-y-5'>
-      <SectionTitle
-        id='text'
-        icon={MessageSquareText}
-        eyebrow='Text'
-        title='文本、结构化输出与多模态理解'
-        description='文本模型优先使用 /v1/chat/completions。支持 JSON Schema 的模型可以使用 response_format 约束输出。'
-      />
-      <InfoGrid
-        items={[
-          {
-            icon: CheckCircle2,
-            title: '普通文本',
-            text: 'gpt-5.5、Gemini 文本、Grok 文本等都可通过 chat/completions 调用。',
-          },
-          {
-            icon: CheckCircle2,
-            title: 'JSON Schema',
-            text: '对支持结构化输出的模型，使用 response_format.type = json_schema。',
-          },
-          {
-            icon: ShieldAlert,
-            title: '多模态输入',
-            text: '图片、音频、视频、PDF 是否可用取决于具体模型与当前渠道。建议先用小文件测试。',
-          },
-        ]}
-      />
-    </section>
-  )
-}
-
-function ImageSection() {
-  return (
-    <section className='space-y-5'>
-      <SectionTitle
-        id='image'
-        icon={ImageIcon}
-        eyebrow='Images'
-        title='图片生成与图片编辑'
-        description='GPT、Gemini、Grok 图片模型都归一到 OpenAI 图片端点，响应优先返回 b64_json，方便代码直接保存。'
-      />
-      <EndpointTable
-        rows={[
-          ['gpt-image-2', '/v1/images/generations, /v1/images/edits', '支持生成和编辑'],
-          [
-            'gemini-2.5-flash-image',
-            '/v1/images/generations, /v1/images/edits',
-            '支持 OpenAI 图片端点封装',
-          ],
-          [
-            'gemini-3.1-flash-image-preview',
-            '/v1/images/generations, /v1/images/edits',
-            '支持 aspect_ratio 与 image_size',
-          ],
-          [
-            'grok-imagine-image-lite',
-            '/v1/images/generations',
-            'lite 只用于生成',
-          ],
-          [
-            'grok-imagine-image / pro',
-            '/v1/images/generations, /v1/images/edits',
-            'normal/pro 支持编辑',
-          ],
-        ]}
-      />
-      <div className='border-border/70 bg-muted/20 rounded-xl border p-4'>
-        <div className='mb-2 flex items-center gap-2 text-sm font-medium'>
-          <FileImage className='size-4 text-emerald-600' />
-          Gemini 图片参数
-        </div>
-        <p className='text-muted-foreground text-sm leading-6'>
-          推荐使用
-          <code className='bg-background mx-1 rounded px-1 py-0.5'>
-            aspect_ratio
-          </code>
-          和
-          <code className='bg-background mx-1 rounded px-1 py-0.5'>
-            image_size
-          </code>
-          ：例如
-          <code className='bg-background mx-1 rounded px-1 py-0.5'>1:1</code>
-          、
-          <code className='bg-background mx-1 rounded px-1 py-0.5'>16:9</code>
-          、
-          <code className='bg-background mx-1 rounded px-1 py-0.5'>1K</code>
-          、
-          <code className='bg-background mx-1 rounded px-1 py-0.5'>2K</code>
-          、
-          <code className='bg-background mx-1 rounded px-1 py-0.5'>4K</code>。
-        </p>
-      </div>
-    </section>
-  )
-}
-
-function VideoSection() {
-  return (
-    <section className='space-y-5'>
-      <SectionTitle
-        id='video'
-        icon={Video}
-        eyebrow='Video'
-        title='Grok 视频生成'
-        description='视频使用 /v1/videos。当前 Grok 视频会按秒计费，生成耗时通常几十秒到数分钟。'
-      />
-      <EndpointTable
-        rows={[
-          ['model', 'grok-imagine-video', '固定使用 Grok Imagine 视频模型'],
-          ['duration', '6 或 8', '时长，按秒计费'],
-          ['resolution', '720p', '当前建议使用 720p'],
-          ['aspect_ratio', '16:9 / 9:16 / 1:1', '横屏、竖屏或方图'],
-          ['image_urls', 'string[]', '参考图 URL 数组'],
-          ['@图1', 'prompt 文本标记', '按 image_urls 顺序绑定参考图'],
-        ]}
-      />
-      <div className='border-amber-500/30 bg-amber-500/10 rounded-xl border p-4 text-sm leading-6 text-amber-900 dark:text-amber-200'>
-        <div className='mb-1 flex items-center gap-2 font-medium'>
-          <AlertTriangle className='size-4' />
-          参考图提示
-        </div>
-        写了 @图4 但只传 3 张参考图时，@图4 会被当作普通文本处理。为了提高遵照度，
-        prompt 中建议明确写出每张参考图对应的角色或物体。
-      </div>
-    </section>
-  )
-}
-
-function BillingSection() {
-  return (
-    <section className='space-y-5 pb-12'>
-      <SectionTitle
-        id='billing'
-        icon={CircleDollarSign}
-        eyebrow='Billing'
-        title='计费、返回与常见错误'
-        description='不同模型的计费单位不同。图片一般按张，Grok 视频按秒，文本按 token 或动态规则。'
-      />
-      <InfoGrid
-        items={[
-          {
-            icon: CircleDollarSign,
-            title: '按张计费',
-            text: 'gpt-image-2、grok-imagine-image、grok-imagine-image-pro 等图片模型按图片计费。',
-          },
-          {
-            icon: CircleDollarSign,
-            title: '按秒计费',
-            text: 'grok-imagine-video 按 duration 秒数计费。测试时建议先用 6 秒。',
-          },
-          {
-            icon: AlertTriangle,
-            title: '常见错误',
-            text: '401 表示 Key 或账号无效；429 表示上游或账号限流；502/503 多为上游不可用或账号池耗尽。',
-          },
-        ]}
-      />
-    </section>
-  )
-}
-
-function InfoGrid(props: {
-  items: Array<{ icon: ElementType; title: string; text: string }>
-}) {
-  return (
-    <div className='grid gap-3 md:grid-cols-3'>
-      {props.items.map((item) => {
-        const Icon = item.icon
-        return (
-          <div
-            key={item.title}
-            className='border-border/70 bg-background rounded-xl border p-4'
-          >
-            <Icon className='mb-3 size-5 text-emerald-600' />
-            <div className='mb-1 text-sm font-semibold'>{item.title}</div>
-            <p className='text-muted-foreground text-sm leading-6'>
-              {item.text}
-            </p>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-function EndpointTable(props: { rows: string[][] }) {
-  return (
-    <div className='border-border/70 overflow-hidden rounded-xl border'>
-      <table className='w-full text-sm'>
-        <tbody>
-          {props.rows.map((row) => (
-            <tr key={row.join('|')} className='border-border/60 border-b last:border-0'>
-              <td className='bg-muted/30 w-[32%] px-4 py-3 align-top font-mono text-xs break-all'>
-                {row[0]}
-              </td>
-              <td className='px-4 py-3 align-top font-mono text-xs break-all'>
-                {row[1]}
-              </td>
-              <td className='text-muted-foreground px-4 py-3 align-top leading-6'>
-                {row[2]}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-function TryItPanel(props: { baseUrl: string }) {
-  const [apiKey, setApiKey] = useState('')
-  const [activeId, setActiveId] = useState('chat')
-  const active = endpointMap.get(activeId) ?? endpointDocs[1]
-  const [body, setBody] = useState(active.requestBody ?? '')
-  const [file, setFile] = useState<File | null>(null)
-  const [isRunning, setIsRunning] = useState(false)
-  const [result, setResult] = useState<RunResult | null>(null)
-
-  const curl = useMemo(
-    () => buildCurl(props.baseUrl, active, body),
-    [props.baseUrl, active, body]
-  )
-
-  const selectEndpoint = (id: string) => {
-    const next = endpointMap.get(id) ?? endpointDocs[0]
-    setActiveId(id)
-    setBody(next.requestBody ?? '')
-    setResult(null)
+function DocContent({ doc, baseUrl }) {
+  if (doc.id === 'introduction') {
+    return <IntroductionContent baseUrl={baseUrl} />;
+  }
+  if (doc.id === 'errors') {
+    return <ErrorsContent />;
   }
 
+  const Icon = doc.icon || BookOpen;
+  return (
+    <main className='docs-content'>
+      <div className='docs-eyebrow'>
+        <Icon size={16} />
+        {doc.eyebrow}
+      </div>
+      <Title heading={1} className='docs-page-title'>
+        {doc.title}
+      </Title>
+      <Text type='secondary' className='docs-lead'>
+        {doc.description}
+      </Text>
+
+      <div className='endpoint-line'>
+        <span className={`method method-${doc.method.toLowerCase()}`}>{doc.method}</span>
+        <code>{doc.path}</code>
+      </div>
+
+      <DocSection title='请求参数'>
+        {doc.params?.length ? (
+          <ParameterTable rows={doc.params} />
+        ) : (
+          <Text type='secondary'>此接口不需要请求参数。</Text>
+        )}
+      </DocSection>
+
+      <DocSection title='响应示例'>
+        <CodeBlock code={JSON.stringify(doc.responseExample || {}, null, 2)} />
+      </DocSection>
+
+      {doc.notes?.length > 0 && (
+        <DocSection title='注意事项'>
+          <ul className='docs-list'>
+            {doc.notes.map((note) => (
+              <li key={note}>{note}</li>
+            ))}
+          </ul>
+        </DocSection>
+      )}
+    </main>
+  );
+}
+
+function IntroductionContent({ baseUrl }) {
+  return (
+    <main className='docs-content'>
+      <div className='docs-eyebrow'>
+        <BookOpen size={16} />
+        Introduction
+      </div>
+      <Title heading={1} className='docs-page-title'>
+        API 参考
+      </Title>
+      <Text type='secondary' className='docs-lead'>
+        柚子中转开放接口文档。这里按实际可用端点组织：文本走 Chat Completions，图片走 Images，视频走 Videos。
+      </Text>
+
+      <DocSection title='基础信息'>
+        <InfoRows
+          rows={[
+            ['API 基础 URL', baseUrl],
+            ['认证方式', 'Authorization: Bearer YOUR_API_KEY'],
+            ['请求格式', 'application/json；图片编辑使用 multipart/form-data'],
+            ['响应格式', 'OpenAI 兼容 JSON，图片优先返回 b64_json'],
+          ]}
+        />
+      </DocSection>
+
+      <DocSection title='API 概览'>
+        <div className='overview-grid'>
+          <OverviewCard title='文本模型' text='/v1/chat/completions；支持普通文本、部分模型支持 JSON Schema 和多模态理解。' />
+          <OverviewCard title='图片模型' text='/v1/images/generations 与 /v1/images/edits；覆盖 GPT、Gemini、Grok 图片。' />
+          <OverviewCard title='视频模型' text='/v1/videos；当前主要用于 Grok Imagine 视频，按秒计费。' />
+        </div>
+      </DocSection>
+
+      <DocSection title='快速开始'>
+        <CodeBlock
+          code={[
+            `curl ${baseUrl}/v1/chat/completions \\`,
+            `  -H "Authorization: Bearer $YOUR_API_KEY" \\`,
+            `  -H "Content-Type: application/json" \\`,
+            `  -d '{`,
+            `    "model": "gpt-5.5",`,
+            `    "messages": [{"role": "user", "content": "hi"}]`,
+            `  }'`,
+          ].join('\n')}
+        />
+      </DocSection>
+    </main>
+  );
+}
+
+function ErrorsContent() {
+  return (
+    <main className='docs-content'>
+      <div className='docs-eyebrow'>
+        <AlertCircle size={16} />
+        Billing
+      </div>
+      <Title heading={1} className='docs-page-title'>
+        计费与错误
+      </Title>
+      <Text type='secondary' className='docs-lead'>
+        文本、图片、视频模型的计费单位不同。调用前建议先在模型广场确认单价和可用端点。
+      </Text>
+
+      <DocSection title='计费单位'>
+        <ParameterTable
+          rows={[
+            ['文本模型', 'token / 动态规则', '按模型配置扣费。'],
+            ['图片模型', '按张', 'gpt-image-2、grok-imagine-image/pro 等图片模型按图片数计费。'],
+            ['视频模型', '按秒', 'grok-imagine-video 按 duration 秒数计费。'],
+          ]}
+          headers={['类型', '单位', '说明']}
+        />
+      </DocSection>
+
+      <DocSection title='常见错误'>
+        <ParameterTable
+          rows={[
+            ['400', 'invalid_request_error', '模型与端点不匹配，或请求参数格式错误。'],
+            ['401', 'invalid credentials', 'Key 无效或上游账号失效。'],
+            ['429', 'rate limit', '上游账号或渠道限流。'],
+            ['502 / 503', 'upstream_error', '上游不可用、账号池耗尽或网络异常。'],
+          ]}
+          headers={['HTTP', '类型', '说明']}
+        />
+      </DocSection>
+    </main>
+  );
+}
+
+function RightRail({ doc, baseUrl }) {
+  if (doc.type === 'guide') {
+    return (
+      <aside className='docs-right'>
+        <GuideCard baseUrl={baseUrl} />
+      </aside>
+    );
+  }
+  return (
+    <aside className='docs-right'>
+      <CodeAndTry doc={doc} baseUrl={baseUrl} />
+    </aside>
+  );
+}
+
+function GuideCard({ baseUrl }) {
+  return (
+    <div className='right-card'>
+      <div className='right-card-title'>
+        <KeyRound size={16} />
+        Authentication
+      </div>
+      <Text type='secondary' className='right-text'>
+        所有接口都使用 Bearer Token。不要在浏览器公开代码里硬编码 API Key。
+      </Text>
+      <CodeBlock
+        compact
+        code={[
+          `base_url = "${baseUrl}/v1"`,
+          `headers = {`,
+          `  "Authorization": "Bearer $YOUR_API_KEY"`,
+          `}`,
+        ].join('\n')}
+      />
+      <Divider margin='16px' />
+      <div className='right-card-title'>
+        <CheckCircle2 size={16} />
+        Endpoint Rules
+      </div>
+      <ul className='right-list'>
+        <li>文本模型使用 /v1/chat/completions</li>
+        <li>图片生成使用 /v1/images/generations</li>
+        <li>图片编辑使用 /v1/images/edits</li>
+        <li>视频生成使用 /v1/videos</li>
+      </ul>
+    </div>
+  );
+}
+
+function CodeAndTry({ doc, baseUrl }) {
+  const [language, setLanguage] = useState('curl');
+  const [apiKey, setApiKey] = useState('');
+  const [body, setBody] = useState(JSON.stringify(doc.requestBody || {}, null, 2));
+  const [file, setFile] = useState(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const [result, setResult] = useState(null);
+
+  useEffect(() => {
+    setBody(JSON.stringify(doc.requestBody || {}, null, 2));
+    setResult(null);
+    setFile(null);
+  }, [doc.id]);
+
+  const code = useMemo(
+    () => buildCodeExample(baseUrl, doc, body, language),
+    [baseUrl, doc, body, language],
+  );
+
   const runRequest = async () => {
-    setIsRunning(true)
-    setResult(null)
-    const startedAt = performance.now()
+    setIsRunning(true);
+    setResult(null);
+    const startedAt = performance.now();
     try {
       if (!apiKey.trim()) {
-        throw new Error('请先输入 API Key。')
+        throw new Error('请先输入 API Key。');
       }
-      if (active.multipart && !file) {
-        throw new Error('图片编辑需要先选择 image 文件。')
+      if (doc.multipart && !file) {
+        throw new Error('图片编辑需要先选择 image 文件。');
       }
-
-      const headers: Record<string, string> = {
-        Authorization: `Bearer ${apiKey.trim()}`,
-      }
-      let payload: BodyInit | undefined
-
-      if (active.method === 'POST') {
-        if (active.multipart) {
-          const parsed = parseBody(body)
-          const form = new FormData()
-          for (const [key, value] of Object.entries(parsed)) {
-            form.append(
-              key,
-              typeof value === 'string' ? value : JSON.stringify(value)
-            )
-          }
-          if (file) form.append('image', file)
-          payload = form
+      const headers = { Authorization: `Bearer ${apiKey.trim()}` };
+      let payload;
+      if (doc.method === 'POST') {
+        if (doc.multipart) {
+          const parsed = parseBody(body);
+          const form = new FormData();
+          Object.entries(parsed).forEach(([key, value]) => {
+            form.append(key, typeof value === 'string' ? value : JSON.stringify(value));
+          });
+          form.append('image', file);
+          payload = form;
         } else {
-          headers['Content-Type'] = 'application/json'
-          payload = body
+          headers['Content-Type'] = 'application/json';
+          payload = body;
         }
       }
 
-      const response = await fetch(`${props.baseUrl}${active.path}`, {
-        method: active.method,
+      const response = await fetch(`${baseUrl}${doc.path}`, {
+        method: doc.method,
         headers,
         body: payload,
-      })
-      const text = await response.text()
+      });
+      const text = await response.text();
       setResult({
         status: response.status,
         elapsedMs: Math.round(performance.now() - startedAt),
         body: prettyBody(text),
         ...extractPreview(text),
-      })
+      });
     } catch (error) {
       setResult({
         status: 'client_error',
         elapsedMs: Math.round(performance.now() - startedAt),
         body: error instanceof Error ? error.message : String(error),
-      })
+      });
     } finally {
-      setIsRunning(false)
+      setIsRunning(false);
     }
-  }
+  };
 
   return (
-    <aside className='lg:sticky lg:top-24'>
-      <div className='border-border/70 bg-background overflow-hidden rounded-xl border shadow-sm'>
-        <div className='border-border/70 border-b p-4'>
-          <div className='mb-2 flex items-center justify-between gap-3'>
-            <div className='flex items-center gap-2 font-semibold'>
-              <Play className='size-4 text-emerald-600' />
-              Run request
-            </div>
-            <Badge variant='outline'>{active.badge}</Badge>
-          </div>
-          <p className='text-muted-foreground text-sm leading-6'>
-            {active.description}
-          </p>
-        </div>
-
-        <div className='space-y-4 p-4'>
-          <div className='grid grid-cols-2 gap-2'>
-            {endpointDocs.map((item) => (
-              <button
-                key={item.id}
-                type='button'
-                onClick={() => selectEndpoint(item.id)}
-                className={cn(
-                  'rounded-lg border px-3 py-2 text-left text-xs transition-colors',
-                  active.id === item.id
-                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200'
-                    : 'border-border/70 hover:bg-muted/60 text-muted-foreground hover:text-foreground'
-                )}
-              >
-                {item.title}
-              </button>
-            ))}
-          </div>
-
-          <div className='space-y-2'>
-            <label className='text-sm font-medium'>API Key</label>
-            <Input
-              value={apiKey}
-              onChange={(event) => setApiKey(event.target.value)}
-              placeholder='sk-...'
-              type='password'
-              autoComplete='off'
-            />
-            <p className='text-muted-foreground text-xs'>
-              Key 只保存在当前浏览器内存，不会写入页面代码示例。
-            </p>
-          </div>
-
-          <div className='space-y-2'>
-            <div className='flex items-center justify-between gap-2'>
-              <label className='text-sm font-medium'>Request</label>
-              <span className='text-muted-foreground font-mono text-xs'>
-                {active.method} {active.path}
-              </span>
-            </div>
-            {active.method === 'POST' ? (
-              <Textarea
-                value={body}
-                onChange={(event) => setBody(event.target.value)}
-                className='min-h-48 font-mono text-xs'
-              />
-            ) : (
-              <div className='bg-muted rounded-lg px-3 py-2 font-mono text-xs'>
-                No request body
-              </div>
-            )}
-          </div>
-
-          {active.multipart && (
-            <div className='space-y-2'>
-              <label className='text-sm font-medium'>image file</label>
-              <Input
-                type='file'
-                accept='image/png,image/jpeg,image/webp'
-                onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-              />
-            </div>
-          )}
-
-          {active.billable && (
-            <div className='border-amber-500/30 bg-amber-500/10 rounded-lg border px-3 py-2 text-xs text-amber-900 dark:text-amber-200'>
-              {active.billable}
-            </div>
-          )}
-
-          <Button
-            className='w-full'
-            onClick={runRequest}
-            disabled={isRunning}
-          >
-            {isRunning ? (
-              <Loader2 className='size-4 animate-spin' />
-            ) : (
-              <Play className='size-4' />
-            )}
-            Run
-          </Button>
-
-          <div className='space-y-2'>
-            <div className='flex items-center gap-2 text-sm font-medium'>
-              <Copy className='size-4' />
-              cURL
-            </div>
-            <CodeBlock code={curl} language='bash' className='max-h-80'>
-              <CodeBlockCopyButton />
-            </CodeBlock>
-          </div>
-
-          {result && (
-            <div className='space-y-2'>
-              <div className='flex items-center justify-between gap-2 text-sm font-medium'>
-                <span>Response</span>
-                <span className='text-muted-foreground font-mono text-xs'>
-                  {result.status} · {result.elapsedMs}ms
-                </span>
-              </div>
-              {result.imageUrl && (
-                <img
-                  src={result.imageUrl}
-                  alt='Generated result'
-                  className='border-border max-h-56 w-full rounded-lg border object-contain'
-                />
-              )}
-              {result.mediaUrl && (
-                <a
-                  href={result.mediaUrl}
-                  target='_blank'
-                  rel='noopener noreferrer'
-                  className='text-emerald-700 hover:underline dark:text-emerald-300'
-                >
-                  打开媒体地址
-                </a>
-              )}
-              <pre className='bg-muted max-h-72 overflow-auto rounded-lg p-3 text-xs whitespace-pre-wrap'>
-                {result.body}
-              </pre>
-            </div>
-          )}
-        </div>
+    <div className='right-card'>
+      <div className='right-card-title'>
+        <span className={`method method-${doc.method.toLowerCase()}`}>{doc.method}</span>
+        <code>{doc.path}</code>
       </div>
-    </aside>
-  )
+
+      {doc.billable && <Tag color='orange'>{doc.billable}</Tag>}
+
+      <Divider margin='16px' />
+
+      <div className='right-row'>
+        <Text strong>代码示例</Text>
+        <Button size='small' icon={<IconCopy />} onClick={() => copyCode(code)}>
+          复制
+        </Button>
+      </div>
+      <Select
+        value={language}
+        onChange={setLanguage}
+        optionList={codeLanguages}
+        style={{ width: '100%', marginTop: 10, marginBottom: 10 }}
+      />
+      <CodeBlock compact code={code} />
+
+      <Divider margin='18px' />
+
+      <Text strong>Try it</Text>
+      <Input
+        value={apiKey}
+        onChange={setApiKey}
+        placeholder='sk-...'
+        mode='password'
+        autoComplete='off'
+        style={{ marginTop: 10 }}
+      />
+
+      {doc.method === 'POST' && (
+        <TextArea
+          value={body}
+          onChange={setBody}
+          autosize={{ minRows: 8, maxRows: 14 }}
+          className='request-editor'
+        />
+      )}
+
+      {doc.multipart && (
+        <input
+          type='file'
+          accept='image/png,image/jpeg,image/webp'
+          onChange={(event) => setFile(event.target.files?.[0] || null)}
+          className='file-input'
+        />
+      )}
+
+      <Button
+        theme='solid'
+        type='primary'
+        icon={<IconPlay />}
+        loading={isRunning}
+        onClick={runRequest}
+        style={{ width: '100%', marginTop: 12 }}
+      >
+        Try it
+      </Button>
+
+      {result && (
+        <div className='result-box'>
+          <div className='right-row'>
+            <Text strong>Response</Text>
+            <Text type='tertiary' size='small' code>
+              {result.status} · {result.elapsedMs}ms
+            </Text>
+          </div>
+          {result.imageUrl && (
+            <img src={result.imageUrl} alt='Generated result' className='result-image' />
+          )}
+          {result.mediaUrl && (
+            <a href={result.mediaUrl} target='_blank' rel='noopener noreferrer'>
+              打开媒体地址
+            </a>
+          )}
+          <CodeBlock compact code={result.body} />
+        </div>
+      )}
+    </div>
+  );
 }
 
-function parseBody(body: string): Record<string, unknown> {
-  const parsed = JSON.parse(body)
+function DocSection({ title, children }) {
+  return (
+    <section className='doc-section'>
+      <Title heading={3}>{title}</Title>
+      {children}
+    </section>
+  );
+}
+
+function ParameterTable({ rows, headers = ['参数', '类型', '必填', '说明'] }) {
+  return (
+    <div className='param-table-wrap'>
+      <table className={`param-table param-table-${headers.length}`}>
+        <thead>
+          <tr>
+            {headers.map((header) => (
+              <th key={header}>{header}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.join('|')}>
+              {row.map((cell, index) => (
+                <td key={`${row[0]}-${index}`}>{cell}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function InfoRows({ rows }) {
+  return (
+    <div className='info-rows'>
+      {rows.map(([label, value]) => (
+        <div key={label} className='info-row'>
+          <Text type='tertiary'>{label}</Text>
+          <code>{value}</code>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function OverviewCard({ title, text }) {
+  return (
+    <div className='overview-card'>
+      <div>{title}</div>
+      <Text type='secondary'>{text}</Text>
+    </div>
+  );
+}
+
+function CodeBlock({ code, compact = false }) {
+  return (
+    <pre className={`code-block ${compact ? 'compact' : ''}`}>
+      <code>{code}</code>
+    </pre>
+  );
+}
+
+function getInitialDocId() {
+  if (typeof window === 'undefined') return 'introduction';
+  const hash = window.location.hash.replace(/^#/, '');
+  return docs.some((item) => item.id === hash) ? hash : 'introduction';
+}
+
+function parseBody(body) {
+  const parsed = JSON.parse(body);
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error('Request body must be a JSON object.')
+    throw new Error('Request body must be a JSON object.');
   }
-  return parsed as Record<string, unknown>
+  return parsed;
 }
 
-function buildCurl(baseUrl: string, endpoint: EndpointDoc, body: string) {
-  const url = `${baseUrl}${endpoint.path}`
-  if (endpoint.method === 'GET') {
-    return [
-      `curl ${url} \\`,
-      `  -H "Authorization: Bearer $YOUR_API_KEY"`,
-    ].join('\n')
+function buildCodeExample(baseUrl, doc, body, language) {
+  if (language === 'python') return buildPythonExample(baseUrl, doc, body);
+  if (language === 'javascript') return buildJavaScriptExample(baseUrl, doc, body);
+  return buildCurlExample(baseUrl, doc, body);
+}
+
+function buildCurlExample(baseUrl, doc, body) {
+  const url = `${baseUrl}${doc.path}`;
+  if (doc.method === 'GET') {
+    return [`curl --request GET \\`, `  --url ${url} \\`, `  --header "Authorization: Bearer $YOUR_API_KEY"`].join('\n');
   }
-  if (endpoint.multipart) {
-    let parsed: Record<string, unknown> = {}
+  if (doc.multipart) {
+    let parsed = {};
     try {
-      parsed = parseBody(body)
+      parsed = parseBody(body);
     } catch {
-      parsed = {}
+      parsed = {};
     }
-    const lines = [
-      `curl ${url} \\`,
-      `  -H "Authorization: Bearer $YOUR_API_KEY" \\`,
-    ]
-    for (const [key, value] of Object.entries(parsed)) {
-      lines.push(
-        `  -F "${key}=${typeof value === 'string' ? value : JSON.stringify(value)}" \\`
-      )
-    }
-    lines.push(`  -F "image=@input.png"`)
-    return lines.join('\n')
+    const lines = [`curl --request POST \\`, `  --url ${url} \\`, `  --header "Authorization: Bearer $YOUR_API_KEY" \\`];
+    Object.entries(parsed).forEach(([key, value]) => {
+      lines.push(`  --form '${key}=${typeof value === 'string' ? value : JSON.stringify(value)}' \\`);
+    });
+    lines.push(`  --form 'image=@input.png'`);
+    return lines.join('\n');
   }
   return [
-    `curl ${url} \\`,
-    `  -H "Authorization: Bearer $YOUR_API_KEY" \\`,
-    `  -H "Content-Type: application/json" \\`,
-    `  -d '${body.replace(/\n/g, '\n     ')}'`,
-  ].join('\n')
+    `curl --request POST \\`,
+    `  --url ${url} \\`,
+    `  --header "Authorization: Bearer $YOUR_API_KEY" \\`,
+    `  --header "Content-Type: application/json" \\`,
+    `  --data '${body.replace(/\n/g, '\n          ')}'`,
+  ].join('\n');
 }
 
-function prettyBody(text: string) {
+function buildPythonExample(baseUrl, doc, body) {
+  const url = `${baseUrl}${doc.path}`;
+  if (doc.multipart) {
+    return [
+      'import requests',
+      '',
+      `url = "${url}"`,
+      'headers = {"Authorization": "Bearer $YOUR_API_KEY"}',
+      `data = ${body}`,
+      'files = {"image": open("input.png", "rb")}',
+      '',
+      'response = requests.post(url, headers=headers, data=data, files=files)',
+      'print(response.json())',
+    ].join('\n');
+  }
+  if (doc.method === 'GET') {
+    return [
+      'import requests',
+      '',
+      `url = "${url}"`,
+      'headers = {"Authorization": "Bearer $YOUR_API_KEY"}',
+      '',
+      'response = requests.get(url, headers=headers)',
+      'print(response.json())',
+    ].join('\n');
+  }
+  return [
+    'import requests',
+    '',
+    `url = "${url}"`,
+    'headers = {',
+    '    "Authorization": "Bearer $YOUR_API_KEY",',
+    '    "Content-Type": "application/json",',
+    '}',
+    `payload = ${body}`,
+    '',
+    'response = requests.post(url, headers=headers, json=payload)',
+    'print(response.json())',
+  ].join('\n');
+}
+
+function buildJavaScriptExample(baseUrl, doc, body) {
+  const url = `${baseUrl}${doc.path}`;
+  if (doc.multipart) {
+    return [
+      `const form = new FormData();`,
+      ...Object.entries(safeParseObject(body)).map(([key, value]) => {
+        const rendered = typeof value === 'string' ? value : JSON.stringify(value);
+        return `form.append("${key}", ${JSON.stringify(rendered)});`;
+      }),
+      `form.append("image", file);`,
+      '',
+      `const response = await fetch("${url}", {`,
+      `  method: "POST",`,
+      `  headers: { Authorization: "Bearer $YOUR_API_KEY" },`,
+      `  body: form,`,
+      `});`,
+      `console.log(await response.json());`,
+    ].join('\n');
+  }
+  return [
+    `const response = await fetch("${url}", {`,
+    `  method: "${doc.method}",`,
+    `  headers: {`,
+    `    Authorization: "Bearer $YOUR_API_KEY",`,
+    ...(doc.method === 'POST' ? [`    "Content-Type": "application/json",`] : []),
+    `  },`,
+    ...(doc.method === 'POST' ? [`  body: JSON.stringify(${body.replace(/\n/g, '\n  ')}),`] : []),
+    `});`,
+    `console.log(await response.json());`,
+  ].join('\n');
+}
+
+function safeParseObject(body) {
   try {
-    const json = JSON.parse(text)
-    return JSON.stringify(redactLargeFields(json), null, 2)
+    return parseBody(body);
   } catch {
-    return text
+    return {};
   }
 }
 
-function redactLargeFields(value: unknown): unknown {
+function prettyBody(text) {
+  try {
+    return JSON.stringify(redactLargeFields(JSON.parse(text)), null, 2);
+  } catch {
+    return text;
+  }
+}
+
+function redactLargeFields(value) {
   if (typeof value === 'string') {
-    return value.length > 1200 ? `${value.slice(0, 1200)}... [truncated]` : value
+    return value.length > 1200 ? `${value.slice(0, 1200)}... [truncated]` : value;
   }
-  if (Array.isArray(value)) return value.map(redactLargeFields)
+  if (Array.isArray(value)) return value.map(redactLargeFields);
   if (value && typeof value === 'object') {
-    const next: Record<string, unknown> = {}
-    for (const [key, item] of Object.entries(value)) {
-      next[key] = redactLargeFields(item)
-    }
-    return next
+    const next = {};
+    Object.entries(value).forEach(([key, item]) => {
+      next[key] = redactLargeFields(item);
+    });
+    return next;
   }
-  return value
+  return value;
 }
 
-function extractPreview(text: string): Pick<RunResult, 'imageUrl' | 'mediaUrl'> {
+function extractPreview(text) {
   try {
-    const json = JSON.parse(text)
-    const first = json?.data?.[0] ?? json?.output?.[0] ?? json
-    const b64 = first?.b64_json ?? first?.image_b64 ?? first?.image
+    const json = JSON.parse(text);
+    const first = json?.data?.[0] || json?.output?.[0] || json;
+    const b64 = first?.b64_json || first?.image_b64 || first?.image;
     if (typeof b64 === 'string' && b64.length > 100) {
-      const mime = b64.startsWith('/9j/') ? 'image/jpeg' : 'image/png'
-      return { imageUrl: `data:${mime};base64,${b64}` }
+      const mime = b64.startsWith('/9j/') ? 'image/jpeg' : 'image/png';
+      return { imageUrl: `data:${mime};base64,${b64}` };
     }
-    const url =
-      first?.url ??
-      first?.public_url ??
-      first?.video_url ??
-      json?.url ??
-      json?.public_url
+    const url = first?.url || first?.public_url || first?.video_url || json?.url || json?.public_url;
     if (typeof url === 'string' && /^https?:\/\//.test(url)) {
-      return { mediaUrl: url }
+      return { mediaUrl: url };
     }
   } catch {
-    /* empty */
+    // ignore preview parse errors
   }
-  return {}
+  return {};
 }
+
+async function copyCode(text) {
+  await navigator.clipboard?.writeText(text);
+}
+
+function DocsStyles() {
+  return (
+    <style>
+      {`
+        .docs-page-root {
+          --semi-color-bg-0: var(--background);
+          --semi-color-bg-1: var(--card);
+          --semi-color-border: var(--border);
+          --semi-color-fill-0: var(--muted);
+          --semi-color-primary: var(--primary);
+          --semi-color-primary-light-default: color-mix(in oklch, var(--primary) 12%, transparent);
+          --semi-color-text-0: var(--foreground);
+          --semi-color-text-1: color-mix(in oklch, var(--foreground) 86%, var(--background));
+          --semi-color-text-2: var(--muted-foreground);
+          background: var(--semi-color-bg-0);
+          color: var(--semi-color-text-0);
+          min-height: 100vh;
+          padding-top: 60px;
+        }
+
+        .docs-layout {
+          display: grid;
+          grid-template-columns: 260px minmax(0, 740px) 430px;
+          gap: 48px;
+          max-width: 1500px;
+          margin: 0 auto;
+          padding: 0 28px 72px;
+        }
+
+        .docs-sidebar {
+          position: sticky;
+          top: 76px;
+          align-self: start;
+          height: calc(100vh - 92px);
+          overflow: auto;
+          padding: 22px 0;
+          border-right: 1px solid var(--semi-color-border);
+        }
+
+        .docs-brand {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          color: var(--semi-color-text-0);
+          font-weight: 700;
+          text-decoration: none;
+          margin-right: 18px;
+        }
+
+        .docs-brand-mark {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          border-radius: 8px;
+          background: var(--semi-color-primary);
+          color: white;
+          font-size: 14px;
+        }
+
+        .docs-search {
+          margin: 22px 18px 18px 0;
+          padding: 10px 12px;
+          border: 1px solid var(--semi-color-border);
+          border-radius: 10px;
+          color: var(--semi-color-text-2);
+          background: var(--semi-color-fill-0);
+          font-size: 13px;
+        }
+
+        .docs-text-secondary {
+          color: var(--semi-color-text-2);
+        }
+
+        .docs-text-tertiary {
+          color: color-mix(in oklch, var(--semi-color-text-2) 82%, transparent);
+        }
+
+        .docs-text-strong {
+          font-weight: 700;
+        }
+
+        .docs-text-small {
+          font-size: 12px;
+        }
+
+        .docs-text-code {
+          font-family: Menlo, Monaco, Consolas, monospace;
+        }
+
+        .docs-divider {
+          height: 1px;
+          background: var(--semi-color-border);
+        }
+
+        .docs-button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          min-height: 34px;
+          border: 1px solid color-mix(in oklch, var(--semi-color-primary) 34%, var(--semi-color-border));
+          border-radius: 8px;
+          background: var(--semi-color-primary);
+          color: var(--primary-foreground);
+          padding: 0 14px;
+          font-size: 13px;
+          font-weight: 650;
+          cursor: pointer;
+          transition: opacity .15s ease, transform .15s ease;
+        }
+
+        .docs-button.small {
+          min-height: 28px;
+          padding: 0 10px;
+          font-size: 12px;
+        }
+
+        .docs-button:hover {
+          opacity: .9;
+        }
+
+        .docs-button:disabled {
+          cursor: not-allowed;
+          opacity: .6;
+        }
+
+        .docs-spinner {
+          width: 14px;
+          height: 14px;
+          border: 2px solid color-mix(in oklch, var(--primary-foreground) 40%, transparent);
+          border-top-color: var(--primary-foreground);
+          border-radius: 999px;
+          animation: docs-spin .8s linear infinite;
+        }
+
+        @keyframes docs-spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        .docs-input,
+        .docs-select,
+        .docs-textarea {
+          width: 100%;
+          border: 1px solid var(--semi-color-border);
+          border-radius: 8px;
+          background: var(--semi-color-bg-0);
+          color: var(--semi-color-text-0);
+          outline: none;
+          transition: border-color .15s ease, box-shadow .15s ease;
+        }
+
+        .docs-input,
+        .docs-select {
+          height: 36px;
+          padding: 0 11px;
+          font-size: 13px;
+        }
+
+        .docs-textarea {
+          resize: vertical;
+          min-height: 190px;
+          padding: 11px;
+          font-size: 12px;
+          line-height: 1.7;
+        }
+
+        .docs-input:focus,
+        .docs-select:focus,
+        .docs-textarea:focus {
+          border-color: var(--semi-color-primary);
+          box-shadow: 0 0 0 3px color-mix(in oklch, var(--semi-color-primary) 18%, transparent);
+        }
+
+        .docs-tag {
+          display: inline-flex;
+          align-items: center;
+          width: fit-content;
+          min-height: 24px;
+          border-radius: 999px;
+          padding: 0 10px;
+          font-size: 12px;
+          font-weight: 700;
+          background: var(--semi-color-fill-0);
+          color: var(--semi-color-text-1);
+        }
+
+        .docs-tag-orange {
+          background: color-mix(in oklch, var(--warning) 18%, transparent);
+          color: var(--warning-foreground);
+        }
+
+        .docs-nav {
+          display: grid;
+          gap: 22px;
+          padding-right: 18px;
+        }
+
+        .docs-nav-title {
+          margin: 0 0 8px;
+          color: var(--semi-color-text-2);
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: .08em;
+        }
+
+        .docs-nav-item {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          border: 0;
+          border-radius: 8px;
+          padding: 8px 10px;
+          color: var(--semi-color-text-1);
+          background: transparent;
+          text-align: left;
+          cursor: pointer;
+          transition: background .15s ease, color .15s ease;
+        }
+
+        .docs-nav-item:hover,
+        .docs-nav-item.active {
+          background: var(--semi-color-primary-light-default);
+          color: var(--semi-color-primary);
+        }
+
+        .docs-content {
+          min-width: 0;
+          padding-top: 54px;
+        }
+
+        .docs-eyebrow {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 12px;
+          color: var(--semi-color-primary);
+          font-size: 13px;
+          font-weight: 700;
+          letter-spacing: .08em;
+          text-transform: uppercase;
+        }
+
+        .docs-page-title {
+          margin: 0 !important;
+          font-size: 44px !important;
+          line-height: 1.12 !important;
+          letter-spacing: 0 !important;
+        }
+
+        .docs-lead {
+          display: block;
+          margin-top: 16px;
+          max-width: 680px;
+          font-size: 17px;
+          line-height: 1.9;
+        }
+
+        .endpoint-line {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-top: 28px;
+          padding: 12px 14px;
+          border: 1px solid var(--semi-color-border);
+          border-radius: 10px;
+          background: var(--semi-color-fill-0);
+        }
+
+        .endpoint-line code,
+        .right-card-title code,
+        .info-row code {
+          font-family: Menlo, Monaco, Consolas, monospace;
+          font-size: 13px;
+          word-break: break-word;
+        }
+
+        .method {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 42px;
+          height: 22px;
+          padding: 0 8px;
+          border-radius: 999px;
+          font-size: 11px;
+          font-weight: 800;
+          line-height: 1;
+        }
+
+        .method-get {
+          color: #047857;
+          background: rgba(16, 185, 129, .12);
+        }
+
+        .method-post {
+          color: #1d4ed8;
+          background: rgba(59, 130, 246, .12);
+        }
+
+        .doc-section {
+          margin-top: 46px;
+        }
+
+        .doc-section h3 {
+          margin-bottom: 16px !important;
+        }
+
+        .param-table-wrap {
+          overflow: auto;
+          border: 1px solid var(--semi-color-border);
+          border-radius: 12px;
+        }
+
+        .param-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 14px;
+          table-layout: fixed;
+        }
+
+        .param-table th,
+        .param-table td {
+          padding: 14px 16px;
+          border-bottom: 1px solid var(--semi-color-border);
+          vertical-align: top;
+          text-align: left;
+          line-height: 1.7;
+        }
+
+        .param-table th {
+          color: var(--semi-color-text-2);
+          background: var(--semi-color-fill-0);
+          font-size: 12px;
+          font-weight: 700;
+        }
+
+        .param-table tr:last-child td {
+          border-bottom: 0;
+        }
+
+        .param-table-3 th:nth-child(1),
+        .param-table-3 td:nth-child(1) {
+          width: 24%;
+          white-space: nowrap;
+        }
+
+        .param-table-3 th:nth-child(2),
+        .param-table-3 td:nth-child(2) {
+          width: 28%;
+          white-space: nowrap;
+        }
+
+        .param-table-3 th:nth-child(3),
+        .param-table-3 td:nth-child(3) {
+          width: 48%;
+        }
+
+        .param-table-4 th:nth-child(1),
+        .param-table-4 td:nth-child(1) {
+          width: 18%;
+        }
+
+        .param-table-4 th:nth-child(2),
+        .param-table-4 td:nth-child(2),
+        .param-table-4 th:nth-child(3),
+        .param-table-4 td:nth-child(3) {
+          width: 13%;
+          white-space: nowrap;
+        }
+
+        .docs-list,
+        .right-list {
+          margin: 0;
+          padding-left: 18px;
+          color: var(--semi-color-text-1);
+          line-height: 1.9;
+        }
+
+        .info-rows {
+          display: grid;
+          gap: 10px;
+        }
+
+        .info-row {
+          display: grid;
+          grid-template-columns: 150px minmax(0, 1fr);
+          gap: 18px;
+          padding: 14px 0;
+          border-bottom: 1px solid var(--semi-color-border);
+        }
+
+        .overview-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 14px;
+        }
+
+        .overview-card {
+          border: 1px solid var(--semi-color-border);
+          border-radius: 12px;
+          padding: 18px;
+          background: var(--semi-color-bg-1);
+        }
+
+        .overview-card > div {
+          margin-bottom: 8px;
+          font-weight: 700;
+        }
+
+        .docs-right {
+          position: sticky;
+          top: 76px;
+          align-self: start;
+          max-height: calc(100vh - 92px);
+          overflow: auto;
+          padding-top: 22px;
+        }
+
+        .right-card {
+          border: 1px solid var(--semi-color-border);
+          border-radius: 14px;
+          background: var(--semi-color-bg-1);
+          padding: 18px;
+          box-shadow: 0 8px 24px rgba(15, 23, 42, .04);
+        }
+
+        .right-card-title,
+        .right-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+        }
+
+        .right-card-title {
+          justify-content: flex-start;
+          font-weight: 700;
+        }
+
+        .right-text {
+          display: block;
+          margin: 10px 0 14px;
+          line-height: 1.8;
+        }
+
+        .request-editor {
+          margin-top: 12px;
+          font-family: Menlo, Monaco, Consolas, monospace;
+          font-size: 12px;
+        }
+
+        .file-input {
+          display: block;
+          margin-top: 12px;
+          color: var(--semi-color-text-1);
+        }
+
+        .result-box {
+          display: grid;
+          gap: 12px;
+          margin-top: 18px;
+        }
+
+        .result-image {
+          width: 100%;
+          max-height: 260px;
+          object-fit: contain;
+          border: 1px solid var(--semi-color-border);
+          border-radius: 12px;
+        }
+
+        .code-block {
+          margin: 0;
+          padding: 16px;
+          border: 1px solid var(--semi-color-border);
+          border-radius: 12px;
+          background: var(--semi-color-fill-0);
+          color: var(--semi-color-text-0);
+          overflow: auto;
+          white-space: pre-wrap;
+          word-break: break-word;
+          font-size: 13px;
+          line-height: 1.75;
+        }
+
+        .code-block.compact {
+          max-height: 310px;
+          font-size: 12px;
+        }
+
+        .code-block code {
+          font-family: Menlo, Monaco, Consolas, monospace;
+        }
+
+        @media (max-width: 1280px) {
+          .docs-layout {
+            grid-template-columns: 230px minmax(0, 1fr);
+            gap: 34px;
+          }
+          .docs-right {
+            position: static;
+            grid-column: 2;
+            max-height: none;
+          }
+        }
+
+        @media (max-width: 860px) {
+          .docs-layout {
+            display: block;
+            padding: 0 18px 48px;
+          }
+          .docs-sidebar {
+            position: static;
+            height: auto;
+            border-right: 0;
+            border-bottom: 1px solid var(--semi-color-border);
+          }
+          .docs-content {
+            padding-top: 32px;
+          }
+          .docs-page-title {
+            font-size: 34px !important;
+          }
+          .overview-grid,
+          .info-row {
+            grid-template-columns: 1fr;
+          }
+          .param-table th,
+          .param-table td {
+            white-space: normal !important;
+          }
+        }
+      `}
+    </style>
+  );
+}
+
+export default Docs;
