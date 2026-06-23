@@ -32,7 +32,7 @@ export function SignIn() {
     <AuthLayout>
       <div className='w-full space-y-8'>
         <div className='space-y-2'>
-          <h2 className='text-2xl font-semibold tracking-tight'>
+          <h2 className='text-2xl font-semibold'>
             {t('Sign in to console')}
           </h2>
           {!status?.self_use_mode_enabled &&
