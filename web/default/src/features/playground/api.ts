@@ -26,6 +26,45 @@ import type {
   GroupOption,
 } from './types'
 
+const NON_CHAT_MODEL_PATTERNS = [
+  /(^|[-_\s])dall[-_\s]?e($|[-_\s0-9])/,
+  /(^|[-_\s])flux($|[-_\s0-9])/,
+  /(^|[-_\s])kling($|[-_\s0-9])/,
+  /(^|[-_\s])luma($|[-_\s0-9])/,
+  /(^|[-_\s])midjourney($|[-_\s0-9])/,
+  /(^|[-_\s])mj($|[-_\s0-9])/,
+  /(^|[-_\s])pika($|[-_\s0-9])/,
+  /(^|[-_\s])pixverse($|[-_\s0-9])/,
+  /(^|[-_\s])recraft($|[-_\s0-9])/,
+  /(^|[-_\s])runway($|[-_\s0-9])/,
+  /(^|[-_\s])sd($|[-_\s0-9])/,
+  /(^|[-_\s])seedance($|[-_\s0-9])/,
+  /(^|[-_\s])sora($|[-_\s0-9])/,
+  /(^|[-_\s])stable[-_\s]?diffusion($|[-_\s0-9])/,
+  /(^|[-_\s])veo($|[-_\s0-9.])/,
+  /(^|[-_\s])wan($|[-_\s0-9.])/,
+]
+
+function isChatCompletionCompatibleModel(model: unknown): model is string {
+  if (typeof model !== 'string') return false
+
+  const name = model.trim().toLowerCase()
+  if (!name) return false
+
+  if (
+    name.includes('image') ||
+    name.includes('imagen') ||
+    name.includes('grok-imagine') ||
+    name.includes('nanobana') ||
+    name.includes('nano-banana') ||
+    name.includes('video')
+  ) {
+    return false
+  }
+
+  return !NON_CHAT_MODEL_PATTERNS.some((pattern) => pattern.test(name))
+}
+
 /**
  * Send chat completion request (non-streaming)
  */
@@ -51,10 +90,12 @@ export async function getUserModels(): Promise<ModelOption[]> {
     return []
   }
 
-  return data.data.map((model: string) => ({
-    label: model,
-    value: model,
-  }))
+  return data.data
+    .filter(isChatCompletionCompatibleModel)
+    .map((model: string) => ({
+      label: model,
+      value: model,
+    }))
 }
 
 /**
