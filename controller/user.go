@@ -593,12 +593,67 @@ func GetUserModels(c *gin.Context) {
 			}
 		}
 	}
+	if endpointTypes, ok := parseUserModelEndpointFilter(c.Query("endpoint_type")); ok {
+		model.GetPricing()
+		models = filterUserModelsByEndpointTypes(models, endpointTypes)
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
 		"data":    models,
 	})
 	return
+}
+
+func parseUserModelEndpointFilter(raw string) ([]constant.EndpointType, bool) {
+	value := strings.TrimSpace(strings.ToLower(raw))
+	if value == "" || value == "all" {
+		return nil, false
+	}
+
+	switch value {
+	case "chat", "text", "chat-completions":
+		return []constant.EndpointType{
+			constant.EndpointTypeOpenAI,
+		}, true
+	}
+
+	parts := strings.Split(value, ",")
+	endpointTypes := make([]constant.EndpointType, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		endpointTypes = append(endpointTypes, constant.EndpointType(part))
+	}
+	return endpointTypes, len(endpointTypes) > 0
+}
+
+func filterUserModelsByEndpointTypes(models []string, allowedEndpointTypes []constant.EndpointType) []string {
+	if len(models) == 0 || len(allowedEndpointTypes) == 0 {
+		return models
+	}
+
+	filteredModels := make([]string, 0, len(models))
+	for _, modelName := range models {
+		if userModelSupportsEndpointType(modelName, allowedEndpointTypes) {
+			filteredModels = append(filteredModels, modelName)
+		}
+	}
+	return filteredModels
+}
+
+func userModelSupportsEndpointType(modelName string, allowedEndpointTypes []constant.EndpointType) bool {
+	supportedEndpointTypes := model.GetModelSupportEndpointTypes(modelName)
+	for _, supportedEndpointType := range supportedEndpointTypes {
+		for _, allowedEndpointType := range allowedEndpointTypes {
+			if supportedEndpointType == allowedEndpointType {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func UpdateUser(c *gin.Context) {
