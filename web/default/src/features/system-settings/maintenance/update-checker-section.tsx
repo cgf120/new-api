@@ -17,22 +17,12 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useState } from 'react'
-import { ExternalLinkIcon, RefreshCcwIcon } from 'lucide-react'
+import { RefreshCcwIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { formatTimestamp, formatTimestampToDate } from '@/lib/format'
+import { formatTimestamp } from '@/lib/format'
 import { Button } from '@/components/ui/button'
-import { Markdown } from '@/components/ui/markdown'
-import { Dialog } from '@/components/dialog'
 import { SettingsSection } from '../components/settings-section'
-
-type ReleaseInfo = {
-  tag_name: string
-  name?: string
-  body?: string
-  html_url?: string
-  published_at?: string
-}
 
 type UpdateCheckerSectionProps = {
   currentVersion?: string | null
@@ -45,8 +35,6 @@ export function UpdateCheckerSection({
 }: UpdateCheckerSectionProps) {
   const { t } = useTranslation()
   const [checking, setChecking] = useState(false)
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [release, setRelease] = useState<ReleaseInfo | null>(null)
 
   const uptime = startTime ? formatTimestamp(startTime) : t('Unknown')
   const version = currentVersion || t('Unknown')
@@ -54,36 +42,13 @@ export function UpdateCheckerSection({
   const handleCheckUpdates = async () => {
     setChecking(true)
     try {
-      const response = await fetch(
-        'https://api.github.com/repos/Calcium-Ion/new-api/releases/latest',
-        {
-          headers: {
-            Accept: 'application/vnd.github+json',
-            'User-Agent': 'new-api-dashboard',
-          },
-        }
-      )
-
-      if (!response.ok) {
-        throw new Error(t('Failed to contact GitHub releases API'))
-      }
-
-      const data = (await response.json()) as ReleaseInfo
-      if (!data?.tag_name) {
-        throw new Error(t('Unexpected release payload'))
-      }
-
-      if (currentVersion && data.tag_name === currentVersion) {
-        toast.success(
-          t('You are running the latest version ({{version}}).', {
-            version: data.tag_name,
-          })
+      await new Promise((resolve) => window.setTimeout(resolve, 450))
+      toast.info(
+        t(
+          'Updates are managed by the deployment pipeline. Current version: {{version}}.',
+          { version }
         )
-        return
-      }
-
-      setRelease(data)
-      setDialogOpen(true)
+      )
     } catch (error) {
       const message =
         error instanceof Error
@@ -95,93 +60,35 @@ export function UpdateCheckerSection({
     }
   }
 
-  const goToRelease = () => {
-    if (release?.html_url) {
-      window.open(release.html_url, '_blank', 'noopener,noreferrer')
-    }
-  }
-
   return (
-    <>
-      <SettingsSection title={t('System maintenance')}>
-        <div className='space-y-6'>
-          <div className='grid gap-4 md:grid-cols-2'>
-            <div className='rounded-lg border p-4'>
-              <div className='text-muted-foreground text-sm'>
-                {t('Current version')}
-              </div>
-              <div className='text-lg font-semibold'>{version}</div>
+    <SettingsSection title={t('System maintenance')}>
+      <div className='space-y-6'>
+        <div className='grid gap-4 md:grid-cols-2'>
+          <div className='rounded-lg border p-4'>
+            <div className='text-muted-foreground text-sm'>
+              {t('Current version')}
             </div>
-            <div className='rounded-lg border p-4'>
-              <div className='text-muted-foreground text-sm'>
-                {t('Uptime since')}
-              </div>
-              <div className='text-lg font-semibold'>{uptime}</div>
-            </div>
+            <div className='text-lg font-semibold'>{version}</div>
           </div>
-
-          <Button onClick={handleCheckUpdates} disabled={checking}>
-            {checking ? (
-              t('Checking updates...')
-            ) : (
-              <>
-                <RefreshCcwIcon className='me-2 h-4 w-4' />
-                {t('Check for updates')}
-              </>
-            )}
-          </Button>
+          <div className='rounded-lg border p-4'>
+            <div className='text-muted-foreground text-sm'>
+              {t('Uptime since')}
+            </div>
+            <div className='text-lg font-semibold'>{uptime}</div>
+          </div>
         </div>
-      </SettingsSection>
 
-      <Dialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        title={
-          release?.tag_name
-            ? t('New version available: {{version}}', {
-                version: release.tag_name,
-              })
-            : t('Release details')
-        }
-        description={
-          release?.published_at
-            ? `${t('Published')} ${formatTimestampToDate(
-                new Date(release.published_at).getTime(),
-                'milliseconds'
-              )}`
-            : undefined
-        }
-        contentClassName='max-h-[80vh] overflow-y-auto'
-        contentHeight='auto'
-        bodyClassName='space-y-4'
-        footer={
-          <>
-            <Button
-              type='button'
-              variant='secondary'
-              onClick={() => setDialogOpen(false)}
-            >
-              {t('Close')}
-            </Button>
-            {release?.html_url && (
-              <Button type='button' onClick={goToRelease}>
-                <ExternalLinkIcon className='me-2 h-4 w-4' />
-                {t('Open release')}
-              </Button>
-            )}
-          </>
-        }
-      >
-        <div className='space-y-4'>
-          {release?.body ? (
-            <Markdown>{release.body}</Markdown>
+        <Button onClick={handleCheckUpdates} disabled={checking}>
+          {checking ? (
+            t('Checking updates...')
           ) : (
-            <p className='text-muted-foreground text-sm'>
-              {t('No release notes provided.')}
-            </p>
+            <>
+              <RefreshCcwIcon className='me-2 h-4 w-4' />
+              {t('Check deployment status')}
+            </>
           )}
-        </div>
-      </Dialog>
-    </>
+        </Button>
+      </div>
+    </SettingsSection>
   )
 }

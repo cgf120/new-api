@@ -208,7 +208,7 @@ export function StatCard(props: StatCardProps) {
   const sparklineVariant = props.sparklineVariant ?? 'bars'
 
   return (
-    <div className='group flex min-h-32 flex-col justify-between gap-3'>
+    <div className='bg-card border-border/70 group flex min-h-32 flex-col justify-between gap-3 rounded-lg border p-4 shadow-xs'>
       <div className='flex items-start justify-between gap-1'>
         <div className='text-muted-foreground flex items-center gap-1.5 text-xs font-medium sm:gap-2'>
           <Icon

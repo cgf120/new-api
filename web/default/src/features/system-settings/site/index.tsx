@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { SettingsPage } from '../components/settings-page'
+import { BRAND } from '@/config/brand'
 import type { SiteSettings } from '../types'
 import {
   SITE_DEFAULT_SECTION,
@@ -27,7 +28,7 @@ import {
 const defaultSiteSettings: SiteSettings = {
   'theme.frontend': 'default',
   Notice: '',
-  SystemName: 'New API',
+  SystemName: BRAND.name,
   Logo: '',
   Footer: '',
   About: '',

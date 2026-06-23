@@ -22,6 +22,7 @@ import { ArrowRight, BookOpen } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useStatus } from '@/hooks/use-status'
 import { Button } from '@/components/ui/button'
+import { BRAND } from '@/config/brand'
 import { HeroTerminalDemo } from '../hero-terminal-demo'
 
 interface HeroProps {
@@ -75,48 +76,29 @@ export function Hero(props: HeroProps) {
   }
 
   return (
-    <section className='relative z-10 overflow-hidden px-6 pt-24 pb-16 md:pt-32 md:pb-24 lg:pt-36 lg:pb-28'>
-      {/* Radial gradient background */}
-      <div
-        aria-hidden
-        className='pointer-events-none absolute inset-0 -z-10 opacity-25 dark:opacity-[0.12]'
-        style={{
-          background: [
-            'radial-gradient(ellipse 60% 50% at 20% 20%, oklch(0.72 0.18 250 / 80%) 0%, transparent 70%)',
-            'radial-gradient(ellipse 50% 40% at 80% 15%, oklch(0.65 0.15 200 / 60%) 0%, transparent 70%)',
-            'radial-gradient(ellipse 40% 35% at 40% 80%, oklch(0.70 0.12 280 / 40%) 0%, transparent 70%)',
-          ].join(', '),
-        }}
-      />
-      {/* Grid pattern */}
-      <div
-        aria-hidden
-        className='absolute inset-0 -z-10 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_30%,black_20%,transparent_100%)] bg-[size:4rem_4rem] opacity-[0.08]'
-      />
-
+    <section className='relative z-10 overflow-hidden border-b bg-muted/25 px-6 pt-24 pb-16 md:pt-28 md:pb-20 lg:pt-32 lg:pb-24'>
       <div className='mx-auto grid max-w-6xl grid-cols-1 items-start gap-12 lg:grid-cols-12 lg:gap-8'>
         {/* Left Column: Title, description, action buttons and application support */}
         <div className='flex flex-col items-start text-left lg:col-span-6'>
           {/* Top Pill Badge */}
           <div
-            className='landing-animate-fade-up mb-5 inline-flex items-center gap-1.5 rounded-full border border-blue-500/20 bg-blue-500/5 px-3 py-1.5 text-[11px] font-medium text-blue-600 opacity-0 shadow-xs dark:border-blue-400/20 dark:bg-blue-400/5 dark:text-blue-400'
+            className='landing-animate-fade-up border-primary/20 bg-primary/10 text-primary mb-5 inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-[11px] font-semibold opacity-0'
             style={{ animationDelay: '0ms' }}
           >
             <span className='relative flex size-1.5'>
-              <span className='absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75' />
-              <span className='relative inline-flex size-1.5 rounded-full bg-blue-500 dark:bg-blue-400' />
+              <span className='bg-primary relative inline-flex size-1.5 rounded-full' />
             </span>
-            <span>{t('AI Application Infrastructure Foundation')}</span>
+            <span>{t('AI Gateway Operations')}</span>
           </div>
 
           <h1
             className='landing-animate-fade-up text-[clamp(2.25rem,4.5vw,3.25rem)] leading-[1.15] font-bold tracking-tight'
             style={{ animationDelay: '60ms' }}
           >
-            {t('Unified API Gateway for')}
+            {BRAND.name}
             <br />
-            <span className='bg-gradient-to-r from-blue-400 via-violet-400 to-purple-500 bg-clip-text text-transparent'>
-              {t('Vast Range of AI Models')}
+            <span className='text-primary'>
+              {t('Unified AI Gateway')}
             </span>
           </h1>
           <p
@@ -124,7 +106,7 @@ export function Hero(props: HeroProps) {
             style={{ animationDelay: '120ms' }}
           >
             {t(
-              'Access a vast selection of models via a standard, unified API protocol. Power AI applications, manage digital assets, and connect the Future.'
+              'Route text, image, video, and multimodal workloads through one OpenAI-compatible API surface with centralized keys, pricing, quota, and observability.'
             )}
           </p>
 
@@ -170,12 +152,12 @@ export function Hero(props: HeroProps) {
             style={{ animationDelay: '240ms' }}
           >
             <div className='mb-4 flex flex-col gap-1'>
-              <span className='text-muted-foreground/50 text-[10px] font-bold tracking-[0.15em] uppercase'>
+              <span className='text-muted-foreground/55 text-[10px] font-bold uppercase'>
                 {t('Supported Applications')}
               </span>
               <p className='text-muted-foreground/60 text-xs leading-relaxed'>
                 {t(
-                  'Supports one-click configuration and perfectly adapts to NewAPI multi-protocol configuration.'
+                  'Use one endpoint for compatible clients, internal automation, and production API integrations.'
                 )}
               </p>
             </div>
@@ -185,7 +167,7 @@ export function Hero(props: HeroProps) {
                 href='https://cherry-ai.com'
                 target='_blank'
                 rel='noopener noreferrer'
-                className='group border-border/40 bg-muted/15 text-foreground/80 hover:border-border hover:bg-muted/30 hover:text-foreground flex items-center gap-3 rounded-full border px-5 py-2.5 text-sm font-medium shadow-[0_1px_2.5px_rgba(0,0,0,0.01)] backdrop-blur-xs transition-all duration-300 hover:scale-[1.02]'
+                className='group border-border/70 bg-background/70 text-foreground/80 hover:border-primary/35 hover:bg-background flex items-center gap-3 rounded-md border px-4 py-2.5 text-sm font-medium shadow-xs transition-colors duration-200'
               >
                 <CherryStudio.Color size={24} className='shrink-0' />
                 <span>Cherry Studio</span>
@@ -196,7 +178,7 @@ export function Hero(props: HeroProps) {
                 href='https://ccswitch.io'
                 target='_blank'
                 rel='noopener noreferrer'
-                className='group border-border/40 bg-muted/15 text-foreground/80 hover:border-border hover:bg-muted/30 hover:text-foreground flex items-center gap-3 rounded-full border px-5 py-2.5 text-sm font-medium shadow-[0_1px_2.5px_rgba(0,0,0,0.01)] backdrop-blur-xs transition-all duration-300 hover:scale-[1.02]'
+                className='group border-border/70 bg-background/70 text-foreground/80 hover:border-primary/35 hover:bg-background flex items-center gap-3 rounded-md border px-4 py-2.5 text-sm font-medium shadow-xs transition-colors duration-200'
               >
                 <img
                   src='https://ccswitch.io/favicon.png'
@@ -219,7 +201,7 @@ export function Hero(props: HeroProps) {
               </a>
 
               {/* "更多" */}
-              <div className='group border-border/40 bg-muted/15 text-foreground/55 hover:border-border hover:bg-muted/30 hover:text-foreground flex cursor-default items-center gap-2.5 rounded-full border px-5 py-2.5 text-sm font-medium shadow-[0_1px_2.5px_rgba(0,0,0,0.01)] backdrop-blur-xs transition-all duration-300 hover:scale-[1.02]'>
+              <div className='group border-border/70 bg-background/70 text-foreground/55 hover:border-primary/35 hover:bg-background flex cursor-default items-center gap-2.5 rounded-md border px-4 py-2.5 text-sm font-medium shadow-xs transition-colors duration-200'>
                 <MoreIcon />
                 <span>{t('More Apps')}</span>
               </div>

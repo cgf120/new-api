@@ -80,10 +80,11 @@ export const ModelCard = memo(function ModelCard(props: ModelCardProps) {
     : null
 
   const primaryGroup = groups[0]
-  const bottomTags = [...endpoints.slice(0, 2), ...tags.slice(0, 2)]
+  const visibleEndpoints = endpoints.slice(0, 3)
+  const bottomTags = tags.slice(0, 2)
   const hiddenCount =
     Math.max(groups.length - 1, 0) +
-    Math.max(endpoints.length - 2, 0) +
+    Math.max(endpoints.length - 3, 0) +
     Math.max(tags.length - 2, 0)
 
   const handleCopy = (e: React.MouseEvent) => {
@@ -94,14 +95,14 @@ export const ModelCard = memo(function ModelCard(props: ModelCardProps) {
   return (
     <div
       className={cn(
-        'group relative flex flex-col rounded-xl border p-3 transition-colors sm:p-5',
-        'hover:bg-muted/20'
+        'bg-card border-border/70 group relative flex flex-col rounded-lg border p-3 shadow-xs transition-colors sm:p-4',
+        'hover:border-primary/35 hover:bg-muted/20'
       )}
     >
       {/* Header: icon + name + price + actions */}
       <div className='flex items-start justify-between gap-2.5 sm:gap-3'>
         <div className='flex min-w-0 items-start gap-2.5 sm:gap-3'>
-          <div className='bg-muted/40 flex size-9 shrink-0 items-center justify-center rounded-lg sm:size-10 sm:rounded-xl'>
+          <div className='bg-muted/40 border-border/70 flex size-9 shrink-0 items-center justify-center rounded-md border sm:size-10'>
             {modelIcon || (
               <span className='text-muted-foreground text-sm font-bold'>
                 {initial}
@@ -227,12 +228,30 @@ export const ModelCard = memo(function ModelCard(props: ModelCardProps) {
       </div>
 
       {/* Description */}
-      <p className='text-muted-foreground mt-2 line-clamp-1 flex-1 text-[13px] leading-relaxed sm:mt-4 sm:line-clamp-2 sm:min-h-[2.5rem]'>
+      <p className='text-muted-foreground mt-3 line-clamp-2 flex-1 text-[13px] leading-relaxed sm:min-h-[2.5rem]'>
         {props.model.description || t('No description available.')}
       </p>
 
+      {visibleEndpoints.length > 0 && (
+        <div className='mt-3 flex min-h-7 flex-wrap items-center gap-1.5'>
+          {visibleEndpoints.map((endpoint) => (
+            <span
+              key={endpoint}
+              className='border-border/70 bg-muted/40 text-foreground/75 rounded-md border px-2 py-1 font-mono text-[11px]'
+            >
+              {endpoint}
+            </span>
+          ))}
+          {endpoints.length > visibleEndpoints.length && (
+            <span className='text-muted-foreground text-xs'>
+              +{endpoints.length - visibleEndpoints.length}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Footer: left metadata and right performance summary share row alignment */}
-      <div className='mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-1 sm:mt-4'>
+      <div className='mt-3 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-1 border-t pt-3'>
         <div className='flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1'>
           {primaryGroup && (
             <span className='text-muted-foreground text-xs font-medium'>

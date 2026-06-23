@@ -176,16 +176,16 @@ export function PublicHeader(props: PublicHeaderProps) {
       <header className='pointer-events-none fixed inset-x-0 top-0 z-50'>
         <div
           className={cn(
-            'pointer-events-auto mx-auto transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]',
-            scrolled ? 'max-w-[52rem] px-3 pt-3' : 'max-w-7xl px-4 pt-0 md:px-6'
+            'pointer-events-auto mx-auto transition-all duration-300',
+            scrolled ? 'max-w-5xl px-3 pt-2' : 'max-w-7xl px-4 pt-0 md:px-6'
           )}
         >
           <nav
             className={cn(
-              'flex items-center justify-between transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]',
+              'flex items-center justify-between transition-all duration-300',
               scrolled
-                ? 'bg-background/60 ring-border/50 h-12 rounded-2xl pr-1.5 pl-4 shadow-[0_2px_16px_-6px_rgba(0,0,0,0.08),0_0_0_0.5px_rgba(0,0,0,0.02)] ring-[0.5px] backdrop-blur-2xl dark:shadow-[0_2px_16px_-6px_rgba(0,0,0,0.4)]'
-                : 'h-16 px-2'
+                ? 'bg-background/95 border-border/70 h-12 rounded-lg border pr-1.5 pl-4 shadow-sm backdrop-blur'
+                : 'h-16 border-b border-transparent px-2'
             )}
           >
             {/* Logo */}

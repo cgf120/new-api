@@ -16,13 +16,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-/**
- * Application-wide constants
- */
+import { BRAND } from '@/config/brand'
 
 // System Configuration Defaults
-export const DEFAULT_SYSTEM_NAME = 'New API'
-export const DEFAULT_LOGO = '/logo.png'
+export const DEFAULT_SYSTEM_NAME = BRAND.name
+export const DEFAULT_LOGO = BRAND.logo
 
 // LocalStorage Keys
 export const STORAGE_KEYS = {

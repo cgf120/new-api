@@ -36,10 +36,13 @@ export function AuthenticatedLayout(props: AuthenticatedLayoutProps) {
   return (
     <LayoutProvider>
       <SearchProvider>
-        <SidebarProvider defaultOpen={defaultOpen} className='flex-col'>
+        <SidebarProvider
+          defaultOpen={defaultOpen}
+          className='bg-background flex-col'
+        >
           <SkipToMain />
           <AppHeader />
-          <div className='flex min-h-0 w-full flex-1'>
+          <div className='bg-muted/20 flex min-h-0 w-full flex-1'>
             <AppSidebar />
             <SidebarInset
               className={cn(

@@ -64,7 +64,7 @@ export function NavGroup({ title, items }: NavGroupProps) {
 
   return (
     <SidebarGroup className='px-2 py-1'>
-      <SidebarGroupLabel className='text-muted-foreground/70 px-2 text-[11px] font-medium tracking-wider uppercase'>
+      <SidebarGroupLabel className='text-muted-foreground/65 px-2 text-[10px] font-semibold uppercase'>
         {title}
       </SidebarGroupLabel>
       <SidebarMenu>
@@ -124,6 +124,7 @@ function SidebarMenuLink({ item, href }: { item: NavLink; href: string }) {
     <SidebarMenuItem>
       <SidebarMenuButton
         isActive={checkIsActive(href, item)}
+        className='h-8 rounded-md text-[13px] data-[active=true]:bg-sidebar-primary/10 data-[active=true]:text-sidebar-primary'
         tooltip={item.title}
         render={<Link to={item.url} onClick={() => setOpenMobile(false)} />}
       >
@@ -168,7 +169,12 @@ function SidebarMenuCollapsible({
     >
       <CollapsibleTrigger
         className='group/collapsible-trigger'
-        render={<SidebarMenuButton tooltip={item.title} />}
+        render={
+          <SidebarMenuButton
+            tooltip={item.title}
+            className='h-8 rounded-md text-[13px] data-[active=true]:bg-sidebar-primary/10 data-[active=true]:text-sidebar-primary'
+          />
+        }
       >
         {item.icon && <item.icon className='shrink-0' />}
         <span className='min-w-0 flex-1 truncate'>{item.title}</span>
@@ -179,9 +185,10 @@ function SidebarMenuCollapsible({
         <SidebarMenuSub>
           {item.items.map((subItem) => (
             <SidebarMenuSubItem key={subItem.title}>
-              <SidebarMenuSubButton
-                isActive={checkIsActive(href, subItem)}
-                render={
+            <SidebarMenuSubButton
+              isActive={checkIsActive(href, subItem)}
+              className='h-7 rounded-md text-[12px] data-[active=true]:bg-sidebar-primary/10 data-[active=true]:text-sidebar-primary'
+              render={
                   <Link to={subItem.url} onClick={() => setOpenMobile(false)} />
                 }
               >
@@ -216,6 +223,7 @@ function SidebarMenuCollapsedDropdown({
             <SidebarMenuButton
               tooltip={item.title}
               isActive={checkIsActive(href, item)}
+              className='h-8 rounded-md text-[13px] data-[active=true]:bg-sidebar-primary/10 data-[active=true]:text-sidebar-primary'
             />
           }
         >

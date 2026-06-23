@@ -20,6 +20,8 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PublicLayout } from '@/components/layout'
 import { PageTransition } from '@/components/page-transition'
+import { Badge } from '@/components/ui/badge'
+import { BRAND } from '@/config/brand'
 import {
   LoadingSkeleton,
   EmptyState,
@@ -102,6 +104,15 @@ export function Pricing() {
       ),
     [usableGroup]
   )
+  const endpointTypeCount = useMemo(() => {
+    const endpointTypes = new Set<string>()
+    for (const model of models || []) {
+      for (const endpoint of model.supported_endpoint_types || []) {
+        endpointTypes.add(endpoint)
+      }
+    }
+    return endpointTypes.size
+  }, [models])
 
   const handleClearAll = useCallback(() => {
     clearFilters()
@@ -156,37 +167,51 @@ export function Pricing() {
 
   return (
     <PublicLayout showMainContainer={false}>
-      <div className='relative'>
-        <div
-          aria-hidden
-          className='pointer-events-none absolute inset-x-0 top-0 h-[600px] opacity-20 dark:opacity-[0.10]'
-          style={{
-            background: [
-              'radial-gradient(ellipse 60% 50% at 20% 20%, oklch(0.72 0.18 250 / 80%) 0%, transparent 70%)',
-              'radial-gradient(ellipse 50% 40% at 80% 15%, oklch(0.65 0.15 200 / 60%) 0%, transparent 70%)',
-              'radial-gradient(ellipse 40% 35% at 50% 70%, oklch(0.70 0.12 280 / 40%) 0%, transparent 70%)',
-            ].join(', '),
-            maskImage:
-              'linear-gradient(to bottom, black 40%, transparent 100%)',
-            WebkitMaskImage:
-              'linear-gradient(to bottom, black 40%, transparent 100%)',
-          }}
-        />
+      <div className='relative bg-muted/20'>
         <PageTransition className='relative mx-auto w-full max-w-[1800px] px-3 pt-16 pb-8 sm:px-6 sm:pt-20 sm:pb-10 xl:px-8'>
-          <header className='mx-auto mb-5 max-w-3xl pt-5 text-center sm:mb-10 sm:pt-10'>
-            <h1 className='text-[clamp(2rem,5.5vw,3.5rem)] leading-[1.15] font-bold tracking-tight'>
-              {t('Model Square')}
-            </h1>
-            <p className='text-muted-foreground/80 mt-3 text-sm sm:mt-4 sm:text-base'>
-              {t('This site currently has {{count}} models enabled', {
-                count: models?.length || 0,
-              })}
-            </p>
-            <p className='text-muted-foreground/60 mx-auto mt-2 max-w-2xl text-xs leading-relaxed sm:text-sm'>
-              {t(
-                'Discover curated AI models, compare pricing and capabilities, and choose the right model for every scenario.'
-              )}
-            </p>
+          <header className='border-border/70 bg-card mb-5 rounded-lg border p-4 shadow-xs sm:mb-6 sm:p-5'>
+            <div className='flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between'>
+              <div className='max-w-3xl'>
+                <div className='mb-3 flex flex-wrap items-center gap-2'>
+                  <Badge variant='secondary'>{BRAND.shortName}</Badge>
+                  <Badge variant='outline'>{t('Model Catalog')}</Badge>
+                </div>
+                <h1 className='text-2xl font-semibold tracking-tight sm:text-3xl'>
+                  {t('Model Square')}
+                </h1>
+                <p className='text-muted-foreground mt-2 text-sm leading-6'>
+                  {t(
+                    'Discover curated AI models, compare pricing and capabilities, and choose the right model for every scenario.'
+                  )}
+                </p>
+              </div>
+              <div className='grid grid-cols-3 gap-2 lg:min-w-[360px]'>
+                <div className='bg-muted/35 rounded-md border px-3 py-2'>
+                  <div className='text-muted-foreground text-[11px] font-semibold uppercase'>
+                    {t('Models')}
+                  </div>
+                  <div className='mt-1 font-mono text-lg font-semibold'>
+                    {models?.length || 0}
+                  </div>
+                </div>
+                <div className='bg-muted/35 rounded-md border px-3 py-2'>
+                  <div className='text-muted-foreground text-[11px] font-semibold uppercase'>
+                    {t('Providers')}
+                  </div>
+                  <div className='mt-1 font-mono text-lg font-semibold'>
+                    {vendors?.length || 0}
+                  </div>
+                </div>
+                <div className='bg-muted/35 rounded-md border px-3 py-2'>
+                  <div className='text-muted-foreground text-[11px] font-semibold uppercase'>
+                    {t('Endpoints')}
+                  </div>
+                  <div className='mt-1 font-mono text-lg font-semibold'>
+                    {endpointTypeCount}
+                  </div>
+                </div>
+              </div>
+            </div>
             <SearchBar
               value={searchInput}
               onChange={setSearchInput}
@@ -194,7 +219,7 @@ export function Pricing() {
               placeholder={t(
                 'Search model name, provider, endpoint, or tag...'
               )}
-              className='mx-auto mt-4 max-w-2xl sm:mt-6'
+              className='mt-5 max-w-3xl'
             />
           </header>
 

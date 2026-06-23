@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
+import { BRAND } from '@/config/brand'
 import { useStatus } from '@/hooks/use-status'
 import { useSystemConfig } from '@/hooks/use-system-config'
 import {
@@ -50,7 +51,7 @@ export function SystemBrand(props: SystemBrandProps) {
   const { logo } = useSystemConfig()
 
   const variant = props.variant ?? 'sidebar'
-  const name = status?.system_name || props.defaultName || 'New API'
+  const name = status?.system_name || props.defaultName || BRAND.name
   const version =
     status?.version || props.defaultVersion || t('Unknown version')
 
@@ -60,7 +61,7 @@ export function SystemBrand(props: SystemBrandProps) {
         to='/'
         aria-label={t('Go to home')}
         className={cn(
-          'text-foreground inline-flex h-7 items-center gap-1.5 rounded-md px-1.5 text-sm font-medium transition-colors outline-none select-none',
+          'text-foreground border-border/70 bg-muted/40 inline-flex h-8 items-center gap-2 rounded-md border px-2 text-sm font-semibold transition-colors outline-none select-none',
           'hover:bg-accent focus-visible:ring-ring/40 focus-visible:ring-2'
         )}
       >
@@ -81,14 +82,14 @@ export function SystemBrand(props: SystemBrandProps) {
       <SidebarMenuItem>
         <SidebarMenuButton
           size='lg'
-          className='hover:text-sidebar-foreground active:text-sidebar-foreground cursor-default hover:bg-transparent active:bg-transparent'
+          className='border-sidebar-border/80 bg-sidebar-accent/40 hover:text-sidebar-foreground active:text-sidebar-foreground h-11 cursor-default rounded-lg border hover:bg-sidebar-accent/60 active:bg-sidebar-accent/60'
           render={<div />}
         >
-          <div className='flex aspect-square size-8 items-center justify-center overflow-hidden rounded-lg'>
+          <div className='flex aspect-square size-8 items-center justify-center overflow-hidden rounded-md'>
             <img
               src={logo}
               alt={t('Logo')}
-              className='size-full rounded-lg object-cover'
+              className='size-full rounded-md object-cover'
             />
           </div>
           <div className='grid flex-1 text-start text-sm leading-tight group-data-[collapsible=icon]:hidden'>

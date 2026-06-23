@@ -60,7 +60,7 @@ const SECOND_BASED_FIXED_PRICE_MODEL_PATTERNS = [
 ]
 
 /**
- * NewAPI stores video generation prices in the fixed-price field, but billing
+ * The gateway stores video generation prices in the fixed-price field, but billing
  * multiplies that unit price by generated seconds in the task relay.
  */
 export function isSecondBasedFixedPriceModel(model: PricingModel): boolean {

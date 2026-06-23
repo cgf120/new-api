@@ -20,6 +20,7 @@ import { Fragment, useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
+import { BRAND } from '@/config/brand'
 import { useStatus } from '@/hooks/use-status'
 import { useSystemConfig } from '@/hooks/use-system-config'
 
@@ -40,12 +41,6 @@ interface FooterProps {
   copyright?: string
   className?: string
 }
-
-const NEW_API_FOOTER_ATTRIBUTION_KEY = [
-  'footer',
-  'new' + 'api',
-  'projectAttributionSuffix',
-].join('.')
 
 function FooterLinkItem(props: { link: FooterLink }) {
   const { t } = useTranslation()
@@ -128,14 +123,12 @@ function ProjectAttribution(props: { currentYear: number; inline?: boolean }) {
     <span className='text-muted-foreground/45'>
       &copy; {props.currentYear}{' '}
       <a
-        href='https://github.com/QuantumNous/new-api'
-        target='_blank'
-        rel='noopener noreferrer'
+        href={BRAND.supportUrl}
         className='text-foreground/70 hover:text-foreground font-medium transition-colors'
       >
-        {t('New API')}
+        {BRAND.name}
       </a>
-      . {t(NEW_API_FOOTER_ATTRIBUTION_KEY)}
+      . {t('AI gateway operations console')}
     </span>
   )
   if (props.inline) {
@@ -157,8 +150,8 @@ export function Footer(props: FooterProps) {
     demoSiteEnabled,
   } = useSystemConfig()
 
-  const displayLogo = systemLogo || props.logo || '/logo.png'
-  const displayName = systemName || props.name || 'New API'
+  const displayLogo = systemLogo || props.logo || BRAND.logo
+  const displayName = systemName || props.name || BRAND.name
   const isDemoSiteMode = Boolean(demoSiteEnabled)
   const currentYear = new Date().getFullYear()
 
@@ -202,16 +195,16 @@ export function Footer(props: FooterProps) {
         title: t('footer.columns.related.title'),
         links: [
           {
-            text: t('footer.columns.related.links.oneApi'),
-            href: 'https://github.com/songquanpeng/one-api',
+            text: t('Model catalog'),
+            href: '/models',
           },
           {
-            text: t('footer.columns.related.links.midjourney'),
-            href: 'https://github.com/novicezk/midjourney-proxy',
+            text: t('Billing'),
+            href: '/pricing',
           },
           {
-            text: t('footer.columns.related.links.newApiKeyTool'),
-            href: 'https://github.com/Calcium-Ion/new-api-key-tool',
+            text: t('API key guide'),
+            href: '/docs#quickstart',
           },
         ],
       },
@@ -263,8 +256,8 @@ export function Footer(props: FooterProps) {
                 {displayName}
               </span>
             </Link>
-            <p className='text-muted-foreground/60 mt-3 max-w-[200px] text-xs leading-relaxed'>
-              {t('Powerful API Management Platform')}
+            <p className='text-muted-foreground/60 mt-3 max-w-[220px] text-xs leading-relaxed'>
+              {t('Unified AI gateway for production API access.')}
             </p>
           </div>
 

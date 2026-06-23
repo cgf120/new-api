@@ -19,9 +19,8 @@ For commercial licensing, please contact support@quantumnous.com
 import { useNavigate, useRouter } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
+import { BRAND } from '@/config/brand'
 import { Button } from '@/components/ui/button'
-
-const FEEDBACK_URL = 'https://github.com/QuantumNous/new-api/issues'
 
 type GeneralErrorProps = React.HTMLAttributes<HTMLDivElement> & {
   minimal?: boolean
@@ -67,7 +66,7 @@ export function GeneralError({
         </p>
         {!minimal && (
           <p className='text-muted-foreground text-center text-sm'>
-            {t('If this keeps happening, please report it on GitHub Issues.')}
+            {t('If this keeps happening, contact support with the request ID.')}
           </p>
         )}
         {!minimal && (
@@ -79,13 +78,11 @@ export function GeneralError({
               variant='outline'
               render={
                 <a
-                  href={FEEDBACK_URL}
-                  target='_blank'
-                  rel='noopener noreferrer'
+                  href={BRAND.feedbackUrl}
                 />
               }
             >
-              {t('Report an issue')}
+              {t('Contact support')}
             </Button>
             <Button onClick={() => navigate({ to: '/' })}>
               {t('Back to Home')}

@@ -39,6 +39,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { BRAND } from '@/config/brand'
 import { FormDirtyIndicator } from '../components/form-dirty-indicator'
 import { FormNavigationGuard } from '../components/form-navigation-guard'
 import {
@@ -207,7 +208,7 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
                   <FormItem>
                     <FormLabel>{t('System Name')}</FormLabel>
                     <FormControl>
-                      <Input placeholder={t('New API')} {...field} />
+                      <Input placeholder={BRAND.name} {...field} />
                     </FormControl>
                     <FormDescription>
                       {t('The name displayed across the application')}
@@ -313,7 +314,9 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
                       <FormLabel>{t('Home Page Content')}</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder={t('Welcome to our New API...')}
+                          placeholder={t(
+                            'Welcome to the AI gateway console...'
+                          )}
                           rows={6}
                           {...field}
                         />

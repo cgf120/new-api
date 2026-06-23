@@ -37,6 +37,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/error-state'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { LoadingState } from '@/components/loading-state'
+import { BRAND } from '@/config/brand'
 import { buildSetupPayload, getSetupStatus, submitSetup } from './api'
 import { AdminStep } from './components/admin-step'
 import { CompleteStep } from './components/complete-step'
@@ -76,6 +77,8 @@ export function SetupWizard() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { systemName, logo, loading: systemConfigLoading } = useSystemConfig()
+  const displayName = systemName || BRAND.name
+  const displayLogo = logo || BRAND.logo
 
   const [currentStep, setCurrentStep] = useState(0)
   const [setupStatus, setSetupStatus] = useState<SetupStatus | undefined>()
@@ -277,39 +280,46 @@ export function SetupWizard() {
   }
 
   return (
-    <div className='bg-muted/40 relative min-h-svh py-10'>
+    <div className='bg-muted/25 relative min-h-svh py-8'>
       <div className='absolute top-4 right-4 sm:top-6 sm:right-6'>
         <LanguageSwitcher />
       </div>
-      <div className='container mx-auto flex max-w-5xl flex-col gap-8 px-4 sm:px-6'>
-        <div className='flex flex-col items-center gap-3'>
-          <div className='relative h-12 w-12'>
+      <div className='container mx-auto flex max-w-5xl flex-col gap-6 px-4 sm:px-6'>
+        <div className='flex flex-col items-start gap-4 pt-4 sm:flex-row sm:items-end sm:justify-between'>
+          <div className='flex items-center gap-4'>
+            <div className='border-border/70 bg-background relative flex size-12 items-center justify-center rounded-lg border shadow-sm'>
             {systemConfigLoading ? (
-              <Skeleton className='absolute inset-0 rounded-full' />
+              <Skeleton className='absolute inset-2 rounded-md' />
             ) : (
               <img
-                src={logo}
+                src={displayLogo}
                 alt={t('System logo')}
-                className='h-12 w-12 rounded-full object-cover shadow-sm'
+                className='size-8 rounded-md object-cover'
               />
             )}
+            </div>
+            <div>
+              <div className='text-muted-foreground text-xs font-semibold uppercase'>
+                {BRAND.productLabel}
+              </div>
+              {systemConfigLoading ? (
+                <Skeleton className='mt-1 h-7 w-40' />
+              ) : (
+                <h1 className='text-2xl font-semibold tracking-tight'>
+                  {t('Initialize')} {displayName}
+                </h1>
+              )}
+            </div>
           </div>
-          {systemConfigLoading ? (
-            <Skeleton className='h-7 w-40' />
-          ) : (
-            <h1 className='text-2xl font-semibold tracking-tight'>
-              {t('Initialize')} {systemName}
-            </h1>
-          )}
-          <p className='text-muted-foreground text-center text-sm sm:text-base'>
+          <p className='text-muted-foreground max-w-md text-sm leading-6 sm:text-right'>
             {t(
               'Follow the guided steps to prepare your workspace before the first login.'
             )}
           </p>
         </div>
 
-        <Card className='shadow-lg'>
-          <CardHeader className='space-y-2'>
+        <Card className='border-border/70 shadow-sm'>
+          <CardHeader className='border-b pb-4'>
             <CardTitle className='text-xl font-semibold'>
               {t('System setup wizard')}
             </CardTitle>
@@ -319,7 +329,7 @@ export function SetupWizard() {
           </CardHeader>
 
           <CardContent className='space-y-6'>
-            <ol className='grid gap-3 sm:grid-cols-4'>
+            <ol className='grid gap-2 sm:grid-cols-4'>
               {STEPS.map((step, index) => {
                 const isActive = currentStep === index
                 const isCompleted = currentStep > index
@@ -327,9 +337,9 @@ export function SetupWizard() {
                   <li
                     key={step.titleKey}
                     className={cn(
-                      'rounded-xl border p-3',
+                      'rounded-lg border p-3',
                       isActive
-                        ? 'border-primary ring-primary/20 ring-2'
+                        ? 'border-primary bg-primary/5 ring-primary/20 ring-2'
                         : isCompleted
                           ? 'border-primary/40 bg-primary/5'
                           : 'border-muted bg-card'
