@@ -1,6 +1,7 @@
 package helper
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -158,6 +159,7 @@ func GetAndValidOpenAIImageRequest(c *gin.Context, relayMode int) (*dto.ImageReq
 			imageRequest.N = common.GetPointer(uint(common.String2Int(formData.Get("n"))))
 			imageRequest.Quality = formData.Get("quality")
 			imageRequest.Size = formData.Get("size")
+			imageRequest.ResponseFormat = formData.Get("response_format")
 			if streamValue := strings.TrimSpace(formData.Get("stream")); streamValue != "" {
 				stream, err := strconv.ParseBool(streamValue)
 				if err != nil {
@@ -167,6 +169,9 @@ func GetAndValidOpenAIImageRequest(c *gin.Context, relayMode int) (*dto.ImageReq
 			}
 			if imageValue := formData.Get("image"); imageValue != "" {
 				imageRequest.Image, _ = common.Marshal(imageValue)
+			}
+			if err := fillOpenAIImageMultipartRawFields(imageRequest, formData); err != nil {
+				return nil, err
 			}
 
 			if imageRequest.Model == "gpt-image-1" {
@@ -235,6 +240,76 @@ func GetAndValidOpenAIImageRequest(c *gin.Context, relayMode int) (*dto.ImageReq
 	}
 
 	return imageRequest, nil
+}
+
+func fillOpenAIImageMultipartRawFields(imageRequest *dto.ImageRequest, formData url.Values) error {
+	rawFieldSetters := map[string]*json.RawMessage{
+		"style":              &imageRequest.Style,
+		"user":               &imageRequest.User,
+		"extra_fields":       &imageRequest.ExtraFields,
+		"background":         &imageRequest.Background,
+		"moderation":         &imageRequest.Moderation,
+		"output_format":      &imageRequest.OutputFormat,
+		"output_compression": &imageRequest.OutputCompression,
+		"partial_images":     &imageRequest.PartialImages,
+		"images":             &imageRequest.Images,
+		"mask":               &imageRequest.Mask,
+		"input_fidelity":     &imageRequest.InputFidelity,
+		"watermark_enabled":  &imageRequest.WatermarkEnabled,
+		"user_id":            &imageRequest.UserId,
+	}
+
+	for key, target := range rawFieldSetters {
+		raw, ok, err := openAIImageMultipartRaw(formData, key)
+		if err != nil {
+			return fmt.Errorf("failed to parse %s: %w", key, err)
+		}
+		if ok {
+			*target = raw
+		}
+	}
+
+	extraFields := []string{
+		"aspect_ratio",
+		"aspectRatio",
+		"image_size",
+		"imageSize",
+		"response_modalities",
+		"responseModalities",
+		"image_urls",
+		"imageUrls",
+		"seed",
+	}
+	for _, key := range extraFields {
+		raw, ok, err := openAIImageMultipartRaw(formData, key)
+		if err != nil {
+			return fmt.Errorf("failed to parse %s: %w", key, err)
+		}
+		if !ok {
+			continue
+		}
+		if imageRequest.Extra == nil {
+			imageRequest.Extra = make(map[string]json.RawMessage)
+		}
+		imageRequest.Extra[key] = raw
+	}
+
+	return nil
+}
+
+func openAIImageMultipartRaw(formData url.Values, key string) (json.RawMessage, bool, error) {
+	if !formData.Has(key) {
+		return nil, false, nil
+	}
+	value := strings.TrimSpace(formData.Get(key))
+	if json.Valid([]byte(value)) {
+		return json.RawMessage(value), true, nil
+	}
+	raw, err := common.Marshal(formData.Get(key))
+	if err != nil {
+		return nil, false, err
+	}
+	return json.RawMessage(raw), true, nil
 }
 
 func GetAndValidateClaudeRequest(c *gin.Context) (textRequest *dto.ClaudeRequest, err error) {
