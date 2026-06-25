@@ -43,6 +43,33 @@ func TestOpenAIImageGenerationToGeminiGenerateContent(t *testing.T) {
 	require.Equal(t, "4K", imageConfig["imageSize"])
 }
 
+func TestOpenAIImageGenerationAllowsMappedNanoBananaModels(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	for _, upstreamModel := range []string{"nano-banana-pro", "nano-banana-2"} {
+		t.Run(upstreamModel, func(t *testing.T) {
+			c, _ := gin.CreateTestContext(httptest.NewRecorder())
+			c.Request = httptest.NewRequest(http.MethodPost, "/v1/images/generations", nil)
+
+			info := &relaycommon.RelayInfo{
+				RelayMode: relayconstant.RelayModeImagesGenerations,
+				ChannelMeta: &relaycommon.ChannelMeta{
+					UpstreamModelName: upstreamModel,
+				},
+			}
+			req := dto.ImageRequest{
+				Model:  "gemini-3.1-flash-image-preview",
+				Prompt: "a clean product photo",
+			}
+
+			converted, err := (&Adaptor{}).ConvertImageRequest(c, info, req)
+			require.NoError(t, err)
+			_, ok := converted.(*dto.GeminiChatRequest)
+			require.True(t, ok)
+		})
+	}
+}
+
 func TestOpenAIImageEditToGeminiGenerateContent(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
